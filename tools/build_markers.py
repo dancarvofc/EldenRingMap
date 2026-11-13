@@ -22,6 +22,7 @@ import os
 import struct
 import sys
 import math
+import re
 from collections import defaultdict
 
 reconfigure = getattr(sys.stdout, "reconfigure", None)
@@ -37,6 +38,41 @@ from erlib.gamepath import require_game_dir
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DEFS = os.path.join(ROOT, "data", "paramdefs")
+
+# More useful subtypes for the map's named world points. These names come from
+# the game's English PlaceName table; unclassified points stay in the original
+# generic POI category rather than receiving an inferred type.
+WORLD_POINT_TYPES = (
+    ("miquellas_crosses", re.compile(r"^Miquella's Cross$", re.I)),
+    ("evergaols", re.compile(r"\bevergaol\b", re.I)),
+    ("divine_towers", re.compile(r"\bdivine tower\b", re.I)),
+    ("minor_erdtrees", re.compile(r"\bminor erdtree\b", re.I)),
+    ("hidden_passages", re.compile(r"\bhidden passage\b", re.I)),
+    ("imp_seal_statues", re.compile(r"\bimp seal statue\b", re.I)),
+    ("portals", re.compile(r"\b(?:portal|sending gate|waygate)\b", re.I)),
+    ("elevators", re.compile(r"\b(?:elevator|lift|well)\b", re.I)),
+    ("dragon_shrines", re.compile(r"\b(?:dragon communion|dragon shrine)\b", re.I)),
+    ("catacombs", re.compile(r"\bcatacomb\b", re.I)),
+    ("tunnels", re.compile(r"\btunnel\b", re.I)),
+    ("caves", re.compile(r"\b(?:cave|cavern|grotto)\b", re.I)),
+    ("dungeons", re.compile(r"\b(?:dungeon|gaol|grave)\b", re.I)),
+    ("forts", re.compile(r"\b(?:fort|garrison)\b", re.I)),
+    ("shacks", re.compile(r"\b(?:shack|hovel|hut|cabin|cottage)\b", re.I)),
+    ("churches", re.compile(r"\b(?:church|cathedral|chapel)\b", re.I)),
+    ("castles", re.compile(r"\b(?:castle|manor|keep|palace)\b", re.I)),
+    ("ruins", re.compile(r"\b(?:ruins?|ruined)\b", re.I)),
+    ("towers", re.compile(r"\b(?:tower|rise|lookout)\b", re.I)),
+)
+
+
+def world_point_category(english_name, is_area=False):
+    """Classify a named world point without changing its name, flag or ID."""
+    if is_area:
+        return "region"
+    for category, pattern in WORLD_POINT_TYPES:
+        if pattern.search(english_name or ""):
+            return category
+    return "poi"
 
 TILE_WORLD = 256
 OFFSET_X = -7168
@@ -405,7 +441,7 @@ def build(params, defs, names_by_loc, conv, boss_name_ids):
             continue
         markers.append({
             "id": f"poi:{r.id}",
-            "cat": "region" if v["isAreaIcon"] else "poi",
+            "cat": world_point_category(nm.get("en"), v["isAreaIcon"]),
             "names": nm,
             "flag": v["eventFlagId"] or None,
             "master": p[2], "px": round(p[0], 1), "py": round(p[1], 1),
@@ -493,7 +529,9 @@ def dedupe(markers):
 # Sanctuary pixel the same way, but they are two different fights and killing
 # one must not tick off the other. Item pickups are excluded for the same
 # reason - several identical drops genuinely can sit on one spot.
-MERGE_CATS = {"grace", "poi", "region", "landmark", "fragment"}
+MERGE_CATS = {"grace", "poi", "region", "landmark", "fragment"} | {
+    category for category, _pattern in WORLD_POINT_TYPES
+}
 MERGE_RADIUS = 2.0          # px on the 10,496 px master
 
 

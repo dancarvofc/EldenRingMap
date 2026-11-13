@@ -140,6 +140,12 @@ def categorise(iid, name, category):
     low = (name or "").lower()
 
     if category == 1:
+        # DLC progression items strengthen the player or spirit summons. Match
+        # the official localised-game English item name, not an external ID list.
+        if "revered spirit ash" in low:
+            return "revered_spirit_ashes"
+        if "scadutree fragment" in low:
+            return "scadutree_fragments"
         # Key items (specific ids first, most specific -> least specific)
         if iid == 2130:
             return "celestial_dew"

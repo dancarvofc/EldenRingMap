@@ -1,6 +1,6 @@
 # Elden Ring Live Companion — Visão do produto e plano técnico
 
-Status: M0 auditado; primeira entrega M1 implementada, conforme TASK-002.md. Referência: 13/11/2026.
+Status: M0 auditado; TASK-002 a TASK-011 implementadas no fork. Referência: 13/11/2026.
 
 O estado consolidado, funcionalidades entregues e backlog atualizado estão em
 [docs/STATUS-AND-ROADMAP.md](docs/STATUS-AND-ROADMAP.md).

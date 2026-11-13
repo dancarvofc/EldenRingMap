@@ -203,6 +203,13 @@ html, body {
 .cat .count { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
 .cat .minibar { height: 3px; background: var(--panel-2); border-radius: 2px; margin-top: 3px; overflow: hidden; }
 .cat .minibar i { display: block; height: 100%; background: var(--gold); }
+.category-group-title {
+  padding: 12px 6px 4px; margin-top: 3px;
+  border-top: 1px solid var(--line); color: var(--gold);
+  font-size: 10px; font-weight: 700; letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.category-group-title:first-child { border-top: 0; margin-top: 0; }
 
 .row-check { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 6px; cursor: pointer; }
 .mini {

@@ -22,9 +22,14 @@ Marcações manuais reais usam perfis locais explicitamente associados. O painel
 **Marcos · chefes** e **Exploração** mostram evidências das flags dos marcadores originais; quests
 reais ainda não são avaliadas.
 
+O painel lateral organiza os marcadores em grupos e separa estruturas como
+cavernas, fortes, cabanas e ruínas. Cruzes de Miquella, Fragmentos de Scadutree
+e Cinzas do Espírito Reverenciado têm categorias próprias quando os dados locais
+do jogo são extraídos.
+
 Leia [modo mock](docs/MOCK-MODE.md), [visão do produto](PROJECT.md),
 [estado consolidado e roteiro](docs/STATUS-AND-ROADMAP.md) e
-[tarefa detalhada mais recente](TASK-010.md). O alvo é web no Steam Deck,
+[tarefa detalhada mais recente](TASK-011.md). O alvo é web no Steam Deck,
 navegador no celular e inicialização controlada por Decky em uma etapa posterior.
 
 Nenhum save pessoal ou asset extraído do jogo acompanha as mudanças deste fork.

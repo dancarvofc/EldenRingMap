@@ -21,6 +21,25 @@ const CATS = {
   region:    { color: '#9aa0a8', r: 5 },
   fragment:  { color: '#c58bea', r: 5 },
   landmark:  { color: '#8fa3b8', r: 4 },
+  miquellas_crosses: { color: '#e4a8ff', r: 6 },
+  evergaols: { color: '#9991cf', r: 5 },
+  divine_towers: { color: '#d1be73', r: 5 },
+  minor_erdtrees: { color: '#87b982', r: 5 },
+  hidden_passages: { color: '#789e95', r: 5 },
+  imp_seal_statues: { color: '#b9a98c', r: 5 },
+  portals:   { color: '#8c9ee0', r: 5 },
+  elevators: { color: '#aaa68e', r: 5 },
+  dragon_shrines: { color: '#cc8979', r: 5 },
+  dungeons:  { color: '#8b786b', r: 5 },
+  caves:     { color: '#89b5a5', r: 5 },
+  catacombs: { color: '#a98b76', r: 5 },
+  tunnels:   { color: '#8a9f9f', r: 5 },
+  forts:     { color: '#b47d63', r: 5 },
+  shacks:    { color: '#d1b77d', r: 5 },
+  churches:  { color: '#e5d69d', r: 5 },
+  castles:   { color: '#b8868d', r: 5 },
+  ruins:     { color: '#a9a08c', r: 5 },
+  towers:    { color: '#9c9ec9', r: 5 },
   // --- equipment ---
   armaments:    { color: '#d4805a', r: 4, icon: 'weapon.png' },
   armour:       { color: '#a08f76', r: 4, icon: 'armor.png' },
@@ -37,6 +56,7 @@ const CATS = {
   pots_n_perfumes:    { color: '#c9b58a', r: 4, icon: 'pots_n_perfumes.png' },
   seeds_tears:        { color: '#8ede7a', r: 4, icon: 'seed.png' },
   scadutree_fragments:{ color: '#e8d8a0', r: 4, icon: 'skadu.png' },
+  revered_spirit_ashes:{ color: '#a8dfd0', r: 4 },
   whetblades:         { color: '#c9c9c9', r: 4, icon: 'whetblade.png' },
   great_runes:        { color: '#ffd766', r: 4, icon: 'great.png' },
   // --- loot ---
@@ -82,6 +102,20 @@ const CATS = {
   // --- fallback ---
   misc: { color: '#6f6f6f', r: 3 },
 };
+
+// Keep the long category list scannable on desktop and mobile. This is display
+// grouping only: category IDs and marker found-state remain unchanged.
+const CATEGORY_GROUPS = [
+  ['locations', ['grace', 'poi', 'region', 'fragment', 'landmark', 'miquellas_crosses']],
+  ['structures', ['caves', 'catacombs', 'tunnels', 'dungeons', 'evergaols', 'forts', 'shacks', 'churches', 'castles', 'ruins', 'towers', 'divine_towers', 'minor_erdtrees', 'hidden_passages', 'imp_seal_statues', 'portals', 'elevators', 'dragon_shrines']],
+  ['keyItems', ['celestial_dew', 'cookbooks', 'crystal_tears', 'imbued_sword_keys', 'larval_tears', 'lost_ashes', 'pots_n_perfumes', 'seeds_tears', 'scadutree_fragments', 'revered_spirit_ashes', 'whetblades', 'great_runes', 'bell_bearings', 'merchant_bell_bearings', 'deathroot', 'progression', 'seedbed_curses']],
+  ['items', ['ammo', 'consumables', 'greases', 'utilities', 'stat_boosts', 'golden_runes', 'golden_runes_low', 'mp_fingers', 'prattling_pates', 'gestures', 'reusables', 'stonesword_keys', 'throwables', 'rune_arcs', 'dragon_hearts', 'material_nodes']],
+  ['equipment', ['armaments', 'armour', 'ashes_of_war', 'spirits', 'talismans', 'incantations', 'sorceries', 'memory_stones', 'prayerbooks']],
+  ['npcs', ['npc']],
+  ['enemies', ['boss']],
+  ['materials', ['crafting_materials', 'gloveworts', 'great_gloveworts', 'smithing_stones', 'smithing_stones_low', 'smithing_stones_rare']],
+  ['other', ['ember_pieces', 'items_and_changes', 'fortunes', 'rune_pieces', 'sealed_curios', 'misc']],
+];
 
 // High-volume categories that bury the map when they are all on at once. They
 // start hidden and can be switched on from the sidebar.
@@ -975,29 +1009,39 @@ function switchMaster(id) {
 function buildCategories() {
   const wrap = $('category-list');
   wrap.innerHTML = '';
-  for (const key of Object.keys(CATS)) {
-    const row = document.createElement('div');
-    row.className = 'cat' + (state.enabled.has(key) ? '' : ' off');
-    row.dataset.cat = key;
-    // 50-odd item categories is too many to tell apart by colour alone, so a
-    // category that has an icon shows it in place of the swatch.
-    const icon = CATS[key].icon;
-    // Not loading="lazy": these are ~50 small PNGs off the local server, and a
-    // lazy swatch stays blank whenever the sidebar is scrolled or collapsed.
-    const swatch = icon
-      ? `<img class="swatch icon" src="icons/categories/${icon}" alt="">`
-      : `<span class="swatch" style="background:${CATS[key].color}"></span>`;
-    row.innerHTML = `
-      ${swatch}
-      <span class="label">${escapeHtml(catLabel(key))}<span class="minibar"><i style="width:0%"></i></span></span>
-      <span class="count">0/0</span>`;
-    row.onclick = () => {
-      if (state.enabled.has(key)) state.enabled.delete(key); else state.enabled.add(key);
-      row.classList.toggle('off', !state.enabled.has(key));
-      savePrefs();
-      map.requestDraw();
-    };
-    wrap.appendChild(row);
+  const groups = CATEGORY_GROUPS.map(([label, keys]) => [label, keys.filter((key) => CATS[key])]);
+  const leftovers = Object.keys(CATS).filter((key) => !groups.some(([, keys]) => keys.includes(key)));
+  if (leftovers.length) groups.push(['other', leftovers]);
+  for (const [group, keys] of groups) {
+    if (!keys.length) continue;
+    const heading = document.createElement('div');
+    heading.className = 'category-group-title';
+    heading.textContent = t('group.' + group);
+    wrap.appendChild(heading);
+    for (const key of keys) {
+      const row = document.createElement('div');
+      row.className = 'cat' + (state.enabled.has(key) ? '' : ' off');
+      row.dataset.cat = key;
+      // 50-odd item categories is too many to tell apart by colour alone, so a
+      // category that has an icon shows it in place of the swatch.
+      const icon = CATS[key].icon;
+      // Not loading="lazy": these are ~50 small PNGs off the local server, and a
+      // lazy swatch stays blank whenever the sidebar is scrolled or collapsed.
+      const swatch = icon
+        ? `<img class="swatch icon" src="icons/categories/${icon}" alt="">`
+        : `<span class="swatch" style="background:${CATS[key].color}"></span>`;
+      row.innerHTML = `
+        ${swatch}
+        <span class="label">${escapeHtml(catLabel(key))}<span class="minibar"><i style="width:0%"></i></span></span>
+        <span class="count">0/0</span>`;
+      row.onclick = () => {
+        if (state.enabled.has(key)) state.enabled.delete(key); else state.enabled.add(key);
+        row.classList.toggle('off', !state.enabled.has(key));
+        savePrefs();
+        map.requestDraw();
+      };
+      wrap.appendChild(row);
+    }
   }
 }
 

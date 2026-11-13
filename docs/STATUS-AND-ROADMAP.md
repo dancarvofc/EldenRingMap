@@ -3,9 +3,9 @@
 **Atualizado em:** 13/11/2026  
 **Repositório de trabalho:** `dancarvofc/EldenRingMap`  
 **Branch:** `main` do nosso fork  
-**Estado:** entregas TASK-002 a TASK-010 implementadas e publicadas; próxima fase é transformar referências e marcos em acompanhamento real mais completo, e preparar uso no celular/Steam Deck.
+**Estado:** entregas TASK-002 a TASK-011 implementadas; próxima fase é transformar referências e marcos em acompanhamento real mais completo, e preparar uso no celular/Steam Deck.
 
-Este documento é o guia consolidado de continuidade. As tarefas `TASK-002.md` a `TASK-010.md` e `docs/tasks/TASK-001.md` guardam o histórico e as evidências detalhadas de cada rodada.
+Este documento é o guia consolidado de continuidade. As tarefas `TASK-002.md` a `TASK-011.md` e `docs/tasks/TASK-001.md` guardam o histórico e as evidências detalhadas de cada rodada.
 
 ## Visão do produto
 
@@ -26,6 +26,8 @@ O programa é passivo: não altera o jogo nem os saves. O idioma de exibição d
 - Nomes exibidos em inglês. A extração local encontrou nomes PT-BR diferentes para 1.103 de 1.106 marcadores originais.
 - Exploração preserva marcadores originais: 413 graças e 24 fragmentos com nomes oficiais ligados a dados de item. Outras 10 áreas ficam na categoria Regions, sem receber nomes de item inventados.
 - Objetivos de “Minha Lista” podem apontar para um marcador e voltar ao mapa, sem alterar o estado automático.
+- Categorias do painel lateral agora aparecem em grupos (Locations, Structures, Key Items, Items, Equipment, NPCs, Enemies, Materials e Other). POIs nomeados são separados por tipos de estrutura, incluindo cabanas, fortes, cavernas, castelos, igrejas, ruínas e torres; nomes sem indicação inequívoca permanecem genéricos.
+- As 13 Cruzes de Miquella encontradas na extração local têm categoria própria. Pickups DLC reconhecem 38 Fragmentos de Scadutree e 18 Cinzas do Espírito Reverenciado; os nomes de categoria entram na busca EN/PT.
 - Correção de cancelamento de animação de câmera para que um voo antigo não sobrescreva Fit, zoom, arrasto ou nova navegação.
 
 ### Leitura passiva e dados auditáveis
@@ -43,7 +45,7 @@ O programa é passivo: não altera o jogo nem os saves. O idioma de exibição d
 - Nenhum save pessoal, mapa, tile, ícone, catálogo extraído ou dado pessoal está versionado.
 - A cópia privada usada na inspeção foi conferida por hash antes/depois das verificações; a origem e o jogo não foram alterados.
 - Mock e inspeção de cópia recusam Host/origem externa e não oferecem acesso LAN. `start-map.sh` do projeto original ativa `--live-memory`; não o usar para iniciar o companion passivo.
-- Validações registradas nas tarefas: 22 testes Node e 7 testes Python; verificações Playwright em 360, 390 e 1280 px nos modos sintético, mapa local e cópia de save. Os números representam a rodada TASK-010; rode novamente após mudanças futuras.
+- Validações anteriores registradas até TASK-010: 22 testes Node e 7 testes Python; verificações Playwright em 360, 390 e 1280 px nos modos sintético, mapa local e cópia de save. Na TASK-011, os extratores foram executados, mas testes automatizados e E2E não foram rodados.
 - Não foram adicionadas dependências npm de produção.
 
 ## O que falta fazer
@@ -99,10 +101,10 @@ Itens abaixo são backlog ordenado por dependência e segurança. A ordem pode m
 
 ## Sequência sugerida das próximas entregas
 
-1. **TASK-011 — primeira quest real auditável:** escolher um fluxo pequeno (sugestão: Millicent), mapear condições com fontes permitidas, definir regras conservadoras e testar snapshots reais/cópias sem escrita. Se não houver evidência suficiente, documentar a lacuna em vez de inferir.
-2. **TASK-012 — presença de NPC:** classificar referências de Millicent por variante e condição; só indicar posição provável quando as flags sustentarem a regra. Manter referência estática separada.
-3. **TASK-013 — operação LAN passiva:** definir ameaça e proteção, habilitar acesso Android de forma restrita e verificar no dispositivo físico.
-4. **TASK-014 — implantação Decky:** controlar serviço passivo, estado e endereço e validar ciclo de vida no Steam Deck.
+1. **TASK-012 — primeira quest real auditável:** escolher um fluxo pequeno (sugestão: Millicent), mapear condições com fontes permitidas, definir regras conservadoras e testar snapshots reais/cópias sem escrita. Se não houver evidência suficiente, documentar a lacuna em vez de inferir.
+2. **TASK-013 — presença de NPC:** classificar referências de Millicent por variante e condição; só indicar posição provável quando as flags sustentarem a regra. Manter referência estática separada.
+3. **TASK-014 — operação LAN passiva:** definir ameaça e proteção, habilitar acesso Android de forma restrita e verificar no dispositivo físico.
+4. **TASK-015 — implantação Decky:** controlar serviço passivo, estado e endereço e validar ciclo de vida no Steam Deck.
 5. **Depois:** expandir catálogo, avisos de irreversibilidade, cobertura de itens e polimento conforme uso.
 
 ## Decisões que não devem ser perdidas
