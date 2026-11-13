@@ -2,6 +2,9 @@
 
 Status: M0 auditado; primeira entrega M1 implementada, conforme TASK-002.md. Referência: 13/11/2026.
 
+O estado consolidado, funcionalidades entregues e backlog atualizado estão em
+[docs/STATUS-AND-ROADMAP.md](docs/STATUS-AND-ROADMAP.md).
+
 ## 1. O que vamos construir
 
 Evoluir o [EldenRingMap Live Map](https://github.com/egormagurin/EldenRingMap) para um companion inteligente e leve, que acompanhe a jornada de cada personagem de **Elden Ring (jogo base e Shadow of the Erdtree)**. O usuário joga no Steam Deck LCD com SteamOS/Proton e consulta, preferencialmente pelo navegador Android na mesma LAN, um mapa e uma lista de objetivos que se atualizam conforme o save. O sistema não altera o jogo nem o save.

@@ -1,6 +1,6 @@
 # AGENTS.md — Instruções permanentes ao Codex
 
-Este repositório será evoluído para o **Elden Ring Live Companion**. Antes de trabalhar, leia `PROJECT.md` e a tarefa ativa (`TASK-010.md`; auditoria anterior em `docs/tasks/TASK-001.md`). Não trate uma tarefa isolada como definição integral de produto.
+Este repositório será evoluído para o **Elden Ring Live Companion**. Antes de trabalhar, leia `PROJECT.md`, `docs/STATUS-AND-ROADMAP.md` e a tarefa ativa (`TASK-010.md`; auditoria anterior em `docs/tasks/TASK-001.md`). Não trate uma tarefa isolada como definição integral de produto.
 
 ## Princípios
 
