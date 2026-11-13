@@ -443,6 +443,8 @@ def build(params, defs, names_by_loc, conv, boss_name_ids):
             "id": f"fragment:{r.id}", "cat": "fragment",
             "names": nm,
             "flag": flag, "master": master,
+            "flagSource": ("WorldMapPieceParam.openEventFlagId" if v["openEventFlagId"]
+                           else "WorldMapPieceParam.acquisitionEventFlagId"),
             "px": round(cx, 1), "py": round(cy, 1),
             "rect": [round(left, 1), round(top, 1), round(right, 1), round(bottom, 1)],
         })

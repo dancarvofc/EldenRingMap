@@ -379,14 +379,14 @@ html, body {
 .real-profile-mode #mock-milestones { display: none; }
 #save-copy-notice label, #save-copy-notice button { display: block; }
 
-#real-milestones > details > summary { padding: 10px 0; font-size: 16px; cursor: pointer; color: var(--gold); }
-#real-milestones label { display: block; margin-top: 8px; }
-#real-milestones input, #real-milestones select { width: 100%; min-height: 44px; padding: 8px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
-#milestone-list { max-height: 65dvh; overflow-y: auto; overscroll-behavior: contain; }
-.milestone { margin: 12px 0; padding: 10px; background: var(--panel-2); border-left: 3px solid var(--gold-soft); }
-.milestone.status-completed { border-color: var(--found); }
-.milestone h3 { margin: 0; font-size: 14px; }
-.milestone-status { font-size: 12px; }
-.milestone details { overflow-wrap: anywhere; font-size: 12px; }
-.milestone summary { cursor: pointer; padding: 12px 0; }
-.milestone button { min-height: 44px; padding: 8px; background: var(--panel); border: 1px solid var(--gold-soft); color: var(--text); cursor: pointer; }
+:is(#real-milestones, #real-exploration) > details > summary { padding: 10px 0; font-size: 16px; cursor: pointer; color: var(--gold); }
+:is(#real-milestones, #real-exploration) label { display: block; margin-top: 8px; }
+:is(#real-milestones, #real-exploration) input, :is(#real-milestones, #real-exploration) select { width: 100%; min-height: 44px; padding: 8px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+:is(#milestone-list, #exploration-list) { max-height: 65dvh; overflow-y: auto; overscroll-behavior: contain; }
+.progress-marker { margin: 12px 0; padding: 10px; background: var(--panel-2); border-left: 3px solid var(--gold-soft); }
+.progress-marker.status-completed { border-color: var(--found); }
+.progress-marker h3 { margin: 0; font-size: 14px; }
+:is(.milestone-status, .exploration-status) { font-size: 12px; }
+.progress-marker details { overflow-wrap: anywhere; font-size: 12px; }
+.progress-marker summary { cursor: pointer; padding: 12px 0; }
+.progress-marker button { min-height: 44px; padding: 8px; background: var(--panel); border: 1px solid var(--gold-soft); color: var(--text); cursor: pointer; }

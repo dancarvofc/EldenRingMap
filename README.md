@@ -18,11 +18,11 @@ Preparação: [mapa local](docs/LOCAL-MAP.md).
 
 Para conferir progresso real sem misturar mocks: [inspeção passiva de uma cópia de save](docs/SAVE-COPY.md).
 Marcações manuais reais usam perfis locais explicitamente associados. O painel
-**Marcos · chefes** mostra evidências das flags dos marcadores originais; quests
+**Marcos · chefes** e **Exploração** mostram evidências das flags dos marcadores originais; quests
 reais ainda não são avaliadas.
 
 Leia [modo mock](docs/MOCK-MODE.md), [visão do produto](PROJECT.md) e
-[tarefa atual e próximos passos](TASK-008.md). Alvo: web no Steam Deck, navegador
+[tarefa atual e próximos passos](TASK-009.md). Alvo: web no Steam Deck, navegador
 no celular e inicialização controlada por Decky em uma etapa posterior.
 
 Nenhum save pessoal ou asset extraído do jogo acompanha as mudanças deste fork.

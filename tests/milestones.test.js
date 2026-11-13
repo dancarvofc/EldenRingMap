@@ -39,3 +39,22 @@ test('multiple flags follow original any-true semantics and recompute on regress
   assert.equal(before[0].status, 'completed');
   assert.equal(evaluateBossMilestones({ ...first, _flags: { get: (id) => id === 1 ? null : false } }, multiple)[0].status, 'unknown');
 });
+
+test('exploration reuses grace flags and requires persistent fragment provenance', () => {
+  const { evaluateExploration } = require('../server/lib/milestones');
+  const dataset = [
+    { id: 'synthetic-grace', cat: 'grace', flags: [1, 2] },
+    { id: 'synthetic-fragment', cat: 'fragment', flag: 3, flagSource: 'WorldMapPieceParam.openEventFlagId' },
+    { id: 'synthetic-animation', cat: 'fragment', flag: 4, flagSource: 'WorldMapPieceParam.acquisitionEventFlagId' },
+    { id: 'synthetic-legacy', cat: 'fragment', flag: 5 },
+    { id: 'synthetic-poi', cat: 'poi', flag: 6 },
+  ];
+  const result = evaluateExploration(character(true), dataset);
+  assert.equal(result.length, 4);
+  assert.deepEqual(result.map((item) => item.status), ['completed', 'completed', 'unknown', 'unknown']);
+  assert.equal(result[0].kind, 'grace');
+  assert.equal(result[1].flagSource, 'WorldMapPieceParam.openEventFlagId');
+  assert.deepEqual(evaluateExploration(character(false), dataset).map((item) => item.status), ['not-recorded', 'not-recorded', 'unknown', 'unknown']);
+  assert.ok(evaluateExploration(character(null), dataset).every((item) => item.status === 'unknown'));
+  assert.ok(evaluateExploration({ ...character(true), checksumOk: false }, dataset).every((item) => item.status === 'unknown'));
+});

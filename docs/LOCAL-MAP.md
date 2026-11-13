@@ -57,3 +57,7 @@ PLAYWRIGHT_MODULE=/caminho/playwright-core BROWSER_EXECUTABLE=/caminho/chrome no
 O teste de interface exige assets já extraídos; valida o modo local em 360, 390
 e 1280 px, incluindo filtros originais presentes e ausência do NPC sintético.
 O teste padrão sem --local-map continua independente dos assets de jogo.
+
+O extrator atualizado registra a origem persistente/transitória das flags de
+fragmentos. Esse metadado é necessário para a confirmação conservadora da coleta
+no painel Exploração da inspeção de save.

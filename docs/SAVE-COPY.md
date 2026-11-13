@@ -102,3 +102,20 @@ a lista não promete representar todos os chefes possíveis do jogo.
 
 Esses marcos não avaliam quests de NPC, pontos sem retorno nem consequências
 narrativas de uma vitória. Nenhum registro de marcação manual prova derrota.
+
+## Exploração
+
+Abra **Exploração** para listar graças e fragmentos dos marcadores originais.
+Filtre por categoria, nome, estado e camada. O painel usa o mesmo avaliador de
+flags e a mesma apresentação de evidências dos marcos de chefes.
+
+Uma graça registrada exige flag ativa de BonfireWarpParam.eventflagId. Um
+fragmento coletado exige origem persistente WorldMapPieceParam.openEventFlagId;
+a flag transitória de animação de aquisição não basta. `false` nunca comprova
+que o local está acessível nem que uma quest foi perdida.
+
+Se fragmentos de uma extração antiga aparecerem como desconhecidos, regenere os
+marcadores usando o extrator atualizado (`./setup-linux.sh --map-only` também
+refaz essa etapa). O campo flagSource fica apenas nos dados gerados locais.
+O botão **Ver no mapa** mantém os marcadores e a área do fragmento desenhados
+pelo canvas original. Nomes derivados e cobertura mantêm as limitações do upstream.

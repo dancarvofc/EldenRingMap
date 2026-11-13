@@ -32,6 +32,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       for (let i = 0; i < characters.characters.length; i++) {
         await page.locator('#save-character').selectOption({ index: i });
         const expected = characters.characters[i];
+        const explorationIds = new Set(expected.exploration.filter((item) => item.status !== 'unknown').map((item) => item.markerId));
+        assert.deepEqual(expected.exploration.filter((item) => item.status === 'completed').map((item) => item.markerId).sort(), expected.found.filter((id) => explorationIds.has(id)).sort());
         const bossIds = new Set(expected.milestones.map((item) => item.markerId));
         assert.deepEqual(expected.milestones.filter((item) => item.status === 'completed').map((item) => item.markerId).sort(), expected.found.filter((id) => bossIds.has(id)).sort());
         await page.waitForFunction((name) => document.querySelector('#char-name').textContent === name, expected.name);
@@ -66,6 +68,29 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         await page.locator('#milestone-layer').selectOption('all');
       }
       await page.locator('#real-milestones > details > summary').click();
+      const explorationData = await page.evaluate(() => state.character.exploration);
+      await page.locator('#real-exploration > details > summary').click();
+      assert.equal(await page.locator('.exploration-item').count(), explorationData.length);
+      await page.locator('#exploration-kind').selectOption('grace');
+      assert.equal(await page.locator('.exploration-item').count(), explorationData.filter((item) => item.kind === 'grace').length);
+      await page.locator('#exploration-kind').selectOption('fragment');
+      await page.locator('#exploration-status').selectOption('completed');
+      assert.equal(await page.locator('.exploration-item').count(), explorationData.filter((item) => item.kind === 'fragment' && item.status === 'completed').length);
+      if (await page.locator('.exploration-item').count()) {
+        await page.locator('.exploration-item details summary').first().click();
+        assert.match(await page.locator('.exploration-item details').first().innerText(), /WorldMapPieceParam.openEventFlagId/);
+        const targetId = await page.locator('.exploration-item').first().getAttribute('data-marker-id');
+        await page.locator('.exploration-item button').first().click();
+        await page.waitForFunction((id) => state.selected === id, targetId);
+        assert.ok(await page.evaluate(() => state.byId.get(state.selected).rect.length === 4));
+        await page.locator('#popup .close').click();
+        if (width <= 700) await page.locator('#sb-expand').click();
+      }
+      await page.locator('#exploration-search').fill('no-such-place-xyz');
+      assert.equal(await page.locator('.exploration-item').count(), 0);
+      await page.locator('#exploration-search').fill('');
+      await page.locator('#real-exploration').screenshot({ path: path.join(artifacts, `exploration-${width}.png`) });
+      await page.locator('#real-exploration > details > summary').click();
       await page.locator('#profile-label').fill(`Perfil ${width}`);
       await page.locator('#profile-create').click();
       await page.waitForFunction((label) => document.querySelector('#profile-status').textContent.includes(label), `Perfil ${width}`);
@@ -100,7 +125,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       await page.evaluate(() => map.draw());
       await page.screenshot({ path: path.join(artifacts, `viewport-${width}.png`) });
       assert.deepEqual(errors, []); await page.close();
-      console.log(`PASS ${width}px: verified characters, automatic markers, milestone evidence/filters/layers, explicit profile, manual objectives, no page errors`);
+      console.log(`PASS ${width}px: verified characters, automatic markers, milestones/exploration evidence/filters/layers, explicit profile, manual objectives, no page errors`);
     }
     assert.deepEqual(fs.readFileSync(file), before);
     console.log(`Copy unchanged. Screenshots: ${artifacts}`);

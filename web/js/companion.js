@@ -119,31 +119,38 @@ window.Companion = (() => {
     byId('profile-bind').onclick = () => association({ type: 'bind', profileId: select.value });
   }
   function renderMilestones() {
-    const section = byId('real-milestones');
+    renderMarkerList('milestone', character?.milestones || [], 'real-milestones');
+    renderMarkerList('exploration', character?.exploration || [], 'real-exploration');
+  }
+  function renderMarkerList(prefix, milestones, sectionId) {
+    const section = byId(sectionId);
     section.hidden = state.source !== 'save-copy';
     if (section.hidden) return;
-    const milestones = character?.milestones || [];
     const completed = milestones.filter((item) => item.status === 'completed').length;
-    byId('milestone-count').textContent = `(${completed}/${milestones.length})`;
-    const input = byId('milestone-search'); const status = byId('milestone-status'); const layer = byId('milestone-layer');
+    byId(`${prefix}-count`).textContent = `(${completed}/${milestones.length})`;
+    const input = byId(`${prefix}-search`); const status = byId(`${prefix}-status`); const layer = byId(`${prefix}-layer`);
+    const kind = prefix === 'exploration' ? byId('exploration-kind') : null;
+    if (kind) kind.onchange = renderMilestones;
     input.oninput = renderMilestones; status.onchange = renderMilestones; layer.onchange = renderMilestones;
     const query = input.value.trim().toLocaleLowerCase();
-    const list = byId('milestone-list'); list.replaceChildren();
+    const list = byId(`${prefix}-list`); list.replaceChildren();
     const visible = milestones.filter((item) => {
       const marker = state.byId.get(item.markerId);
-      return (!query || (marker ? nameOf(marker) : item.markerId).toLocaleLowerCase().includes(query)) &&
+      return (!kind || kind.value === 'all' || item.kind === kind.value) && (!query || (marker ? nameOf(marker) : item.markerId).toLocaleLowerCase().includes(query)) &&
         (status.value === 'all' || item.status === status.value) &&
         (layer.value === 'all' || marker?.master === state.master);
     });
-    byId('milestone-filter-count').textContent = `${visible.length} de ${milestones.length} marcadores`;
+    byId(`${prefix}-filter-count`).textContent = `${visible.length} de ${milestones.length} marcadores`;
     if (!visible.length) list.append(element('p', 'Nenhum marcador corresponde aos filtros.', 'dim'));
     for (const item of visible) {
       const marker = state.byId.get(item.markerId);
-      const card = element('article', undefined, `milestone status-${item.status}`);
+      const card = element('article', undefined, `${prefix === 'milestone' ? 'milestone' : 'exploration-item'} progress-marker status-${item.status}`);
       card.dataset.markerId = item.markerId;
       const title = element('h3', marker ? nameOf(marker) : item.markerId);
-      const statusLabels = { completed: 'Derrota registrada', 'not-recorded': 'Derrota não registrada', unknown: 'Desconhecido' };
-      card.append(title, element('p', `${statusLabels[item.status]} · ${marker?.master || 'Camada desconhecida'}`, 'milestone-status'));
+      const descriptions = { boss: ['Derrota registrada', 'Derrota não registrada'], grace: ['Ativação registrada', 'Ativação não registrada'], fragment: ['Coleta registrada', 'Coleta não registrada'] };
+      const [yes, no] = descriptions[item.kind] || ['Registrado', 'Não registrado'];
+      const statusLabels = { completed: yes, 'not-recorded': no, unknown: 'Desconhecido' };
+      card.append(title, element('p', `${statusLabels[item.status]} · ${marker?.master || 'Camada desconhecida'}`, `${prefix}-status`));
       const details = element('details'); details.append(element('summary', 'Ver evidências'));
       details.append(element('p', `${item.source} · ${item.ruleId} · v${item.ruleVersion}`));
       details.append(element('p', item.flagSource));

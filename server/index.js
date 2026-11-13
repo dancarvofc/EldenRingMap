@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const { evaluateBossMilestones } = require('./lib/milestones');
+const { evaluateBossMilestones, evaluateExploration } = require('./lib/milestones');
 const { ManualState } = require('./lib/manualState');
 const { MockProvider } = require('./lib/mockProvider');
 const { SaveReader } = require('./lib/saveParser');
@@ -309,7 +309,7 @@ function buildSnapshot(reader, savePath) {
       }
     }
     return {
-      ...(saveCopyMode ? { milestones: evaluateBossMilestones(c, MARKERS), observationToken: c.observationToken,
+      ...(saveCopyMode ? { milestones: evaluateBossMilestones(c, MARKERS), exploration: evaluateExploration(c, MARKERS), observationToken: c.observationToken,
         profileId: association?.profileId || null,
         manual: association ? copyManual.read(association.profileId) : null } : {}),
       ...(parsed.source === 'mock' ? { profileId: c.profileId, source: c.source,
