@@ -11,7 +11,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   if (!file) throw new Error('Usage: node tools/verify_save_copy.cjs /path/to/COPY.sl2');
   const before = fs.readFileSync(file);
   const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), 'elden-copy-ui-'));
-  const child = spawn(process.execPath, ['server/index.js', '--save-copy', path.resolve(file), '--port', '0'], { cwd: path.join(__dirname, '..') });
+  const child = spawn(process.execPath, ['server/index.js', '--save-copy', path.resolve(file), '--manual-state', path.join(artifacts, 'manual.json'), '--port', '0'], { cwd: path.join(__dirname, '..') });
   let browser;
   try {
     const base = await new Promise((resolve, reject) => {
@@ -26,7 +26,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.goto(base);
       await page.locator('#save-copy-notice').waitFor({ state: 'visible' });
-      assert.equal(await page.locator('#companion').isVisible(), false);
+      assert.equal(await page.locator('.quest-step').count(), 0);
       const characters = await (await page.request.get(base + '/api/state')).json();
       assert.ok(characters.characters.every((c) => c.checksumOk && c.ok));
       for (let i = 0; i < characters.characters.length; i++) {
@@ -35,13 +35,31 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         await page.waitForFunction((name) => document.querySelector('#char-name').textContent === name, expected.name);
         assert.equal(await page.evaluate(() => state.found.size), expected.found.length);
       }
+      await page.locator('#profile-label').fill(`Perfil ${width}`);
+      await page.locator('#profile-create').click();
+      await page.waitForFunction((label) => document.querySelector('#profile-status').textContent.includes(label), `Perfil ${width}`);
+      await page.locator('#custom-title').fill(`Objetivo ${width}`);
+      await page.locator('#custom-form button').click();
+      await page.getByText(`Objetivo ${width}`, { exact: true }).waitFor();
+      if (characters.characters.length > 1) {
+        await page.locator('#save-character').selectOption({ index: 0 });
+        await page.locator('#companion').waitFor({ state: 'hidden' });
+        await page.locator('#save-character').selectOption({ index: characters.characters.length - 1 });
+        await page.getByText(`Objetivo ${width}`, { exact: true }).waitFor();
+      }
+      await page.reload();
+      await page.getByText(`Objetivo ${width}`, { exact: true }).waitFor();
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await page.locator('#sb-collapse').click();
       await page.evaluate(() => {
-        const marker = state.markers.find((m) => m.master === state.master);
+        const marker = state.markers.find((m) => m.master === state.master && !state.found.has(m.id));
         map.centerOn(marker.px, marker.py, 0.8); showPopup(marker);
       });
-      assert.equal(await page.locator('#popup .toggle').count(), 0);
+      assert.equal(await page.locator('#popup .toggle').count(), 1);
+      const foundBefore = await page.evaluate(() => state.found.size);
+      await page.locator('#popup .toggle').click();
+      await page.waitForFunction(() => !!state.checked[state.selected]);
+      assert.equal(await page.evaluate(() => state.found.size), foundBefore);
       await page.locator('#popup .close').click();
       await page.locator('#sb-expand').click();
       await page.evaluate(() => { document.querySelector('#sidebar').scrollTop = 0; });
@@ -51,7 +69,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       await page.evaluate(() => map.draw());
       await page.screenshot({ path: path.join(artifacts, `viewport-${width}.png`) });
       assert.deepEqual(errors, []); await page.close();
-      console.log(`PASS ${width}px: verified characters, automatic markers, read-only popup, no page errors`);
+      console.log(`PASS ${width}px: verified characters, automatic markers, explicit profile, isolated manual objectives, marker popup, no page errors`);
     }
     assert.deepEqual(fs.readFileSync(file), before);
     console.log(`Copy unchanged. Screenshots: ${artifacts}`);

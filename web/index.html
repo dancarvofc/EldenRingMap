@@ -42,7 +42,19 @@
       </div>
     </section>
 
-    <section id="save-copy-notice" class="panel" hidden><strong class="simulation-badge">CÓPIA DO SAVE · somente leitura</strong><p>Progresso de marcadores extraído da cópia. Quests ainda não avaliadas. Marcações manuais desativadas nesta inspeção.</p></section>
+    <section id="save-copy-notice" class="panel" hidden>
+      <strong class="simulation-badge">CÓPIA DO SAVE · jogo somente leitura</strong>
+      <p>Marcadores automáticos da cópia. Quests ainda não avaliadas.</p>
+      <p id="profile-status"></p>
+      <label for="profile-label">Criar perfil local para este personagem</label>
+      <input id="profile-label" maxlength="100" placeholder="Nome para suas marcações">
+      <button id="profile-create" type="button">Criar e associar</button>
+      <label for="profile-select">Ou associar um perfil já salvo</label>
+      <select id="profile-select"></select>
+      <button id="profile-bind" type="button">Associar ao personagem selecionado</button>
+      <p class="dim">Associação explícita, não identidade automática. Refazer ao reiniciar ou se o personagem mudar.</p>
+      <p id="profile-error" role="alert"></p>
+    </section>
 
     <section id="companion" class="panel" hidden aria-label="Companion simulado">
       <strong class="simulation-badge">SIMULAÇÃO · sem dados reais do jogo</strong>
@@ -56,7 +68,7 @@
       <p id="companion-error" role="alert"></p>
       <div id="quest-timeline"></div>
       <button id="focus-npc" type="button">Ver NPC no mapa</button>
-      <h3>Marcos</h3><p class="dim">Nenhum marco real avaliado nesta simulação.</p>
+      <div id="mock-milestones"><h3>Marcos</h3><p class="dim">Nenhum marco real avaliado nesta simulação.</p></div>
       <h3>Minha lista</h3><div id="custom-objectives"></div>
       <form id="custom-form">
         <label for="custom-title">Novo objetivo</label>

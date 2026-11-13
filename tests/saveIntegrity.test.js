@@ -10,10 +10,11 @@ const { SaveReader, readStable } = require('../server/lib/saveParser');
 
 // Original synthetic container, not game data. Blank slot structure is sufficient
 // to exercise flag exposure; only a fictitious header name is populated.
-function fixture(encrypted = false) {
+function fixture(encrypted = false, twoCharacters = false) {
   const names = Array.from({ length: 12 }, (_, i) => Buffer.from(`USER_DATA${String(i).padStart(3, '0')}\0`, 'utf16le'));
-  const payloads = names.map((_, i) => Buffer.alloc(i === 0 ? 0x280000 : i === 10 ? 0x4000 : 64));
+  const payloads = names.map((_, i) => Buffer.alloc((i === 0 || (twoCharacters && i === 1)) ? 0x280000 : i === 10 ? 0x4000 : 64));
   payloads[10][0x1954] = 1;
+  if (twoCharacters) { payloads[10][0x1955] = 1; payloads[10].write('Other', 0x195e + 0x24c, 'utf16le'); }
   payloads[10].write('Synthetic', 0x195e, 'utf16le');
   const blocks = payloads.map((payload) => {
     const body = Buffer.concat([md5(payload), payload]);
@@ -73,22 +74,36 @@ test('truncated directories, invalid bounds and missing entries are rejected', (
   assert.throws(() => readEntryPayload(buf, undefined), /Missing/);
 });
 
-test('save-copy HTTP exposes verified progress and refuses manual writes or foreign files', { timeout: 10000 }, async (t) => {
+async function launchCopy(t, file) {
   const { spawn } = require('node:child_process');
-  const { file } = files(t); const buf = fixture(); fs.writeFileSync(file, buf);
-  const child = spawn(process.execPath, ['server/index.js', '--save-copy', file, '--port', '0'], { cwd: path.join(__dirname, '..') });
-  t.after(async () => {
+  const child = spawn(process.execPath, ['server/index.js', '--save-copy', file, '--manual-state', path.join(path.dirname(file), 'manual.json'), '--port', '0'], { cwd: path.join(__dirname, '..') });
+  const stop = async () => {
     if (child.exitCode !== null || child.signalCode !== null) return;
     const stopped = new Promise((resolve) => child.once('exit', resolve)); child.kill(); await stopped;
-  });
+  };
+  t.after(stop);
   const base = await new Promise((resolve, reject) => {
     let output = '';
     child.stdout.on('data', (data) => { output += data; const match = /open  http:\/\/localhost:(\d+)/.exec(output); if (match) resolve(`http://127.0.0.1:${match[1]}`); });
     child.once('error', reject); child.once('exit', (code) => reject(new Error(`Server exited ${code}: ${output}`)));
   });
-  const get = async () => (await fetch(base + '/api/state')).json();
-  const post = (route, data) => fetch(base + route, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-  const initial = await get();
+  return {
+    stop, get: async () => (await fetch(base + '/api/state')).json(),
+    post: (route, data) => fetch(base + route, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    refresh: () => fetch(base + '/api/refresh'),
+    hostileHost: () => new Promise((resolve, reject) => {
+      require('node:http').get(base + '/api/state', { headers: { Host: 'foreign.example' } }, (res) => {
+        res.resume(); resolve({ status: res.statusCode });
+      }).on('error', reject);
+    }),
+  };
+}
+
+test('save-copy requires explicit associations and invalidates them on changes and restart', { timeout: 10000 }, async (t) => {
+  const { file } = files(t); const buf = fixture(false, true); fs.writeFileSync(file, buf);
+  const server = await launchCopy(t, file); const { get, post } = server;
+  assert.equal((await server.hostileHost()).status, 403);
+  const initial = await get(); const token = initial.characters[0].observationToken;
   assert.equal(initial.source, 'save-copy'); assert.equal(initial.readOnly, true);
   assert.equal(initial.questsStatus, 'unknown'); assert.equal(initial.live.enabled, false);
   assert.equal(initial.characters[0].checksumOk, true);
@@ -98,5 +113,33 @@ test('save-copy HTTP exposes verified progress and refuses manual writes or fore
   assert.equal((await post('/api/saves', { path: file, slot: 0 })).status, 200);
   assert.equal((await get()).activeSlot, 0);
   assert.equal((await post('/api/saves', { path: '/etc/passwd', slot: 0 })).status, 400);
+  const action = { slot: 0, observationToken: token, type: 'create', title: 'Keep my note' };
+  assert.equal((await post('/api/manual', action)).status, 400);
+  const create = await post('/api/profiles', { slot: 0, observationToken: token, type: 'create', label: 'My local profile' });
+  assert.equal(create.status, 200); const { profileId } = await create.json();
+  assert.equal((await post('/api/manual', { ...action, profileId })).status, 200);
+  let state = await get();
+  assert.equal(state.characters[0].manual.custom[0].title, action.title);
+  assert.equal(state.characters[1].profileId, null);
+  assert.equal((await post('/api/profiles', { slot: 1, observationToken: state.characters[1].observationToken, type: 'bind', profileId })).status, 400);
+  assert.deepEqual(state.characters[0].found, initial.characters[0].found);
+  const changed = Buffer.from(buf); const entry = readBnd4(changed).entries[10];
+  changed[entry.dataOffset + 16 + 0x195e] ^= 1; // Renamed character, valid new checksum.
+  md5(changed.subarray(entry.dataOffset + 16, entry.dataOffset + entry.size)).copy(changed, entry.dataOffset);
+  fs.writeFileSync(file, changed);
+  assert.equal((await post('/api/manual', { ...action, profileId })).status, 400);
+  assert.equal((await get()).characters[0].profileId, null);
+  fs.writeFileSync(file, buf); // Restore previous snapshot, not its transient binding.
+  await server.refresh();
+  assert.equal((await get()).characters[0].profileId, null);
+  await server.stop();
+  const restarted = await launchCopy(t, file);
+  state = await restarted.get();
+  assert.equal(state.characters[0].profileId, null);
+  assert.equal(state.manualProfiles[0].profileId, profileId);
+  assert.equal((await restarted.post('/api/profiles', { slot: 0, observationToken: token, type: 'bind', profileId })).status, 200);
+  state = await restarted.get();
+  assert.equal(state.characters[0].manual.custom[0].title, action.title);
+  assert.equal(state.characters[1].profileId, null);
   assert.deepEqual(fs.readFileSync(file), buf);
 });

@@ -858,7 +858,7 @@ function showPopup(m) {
     </div>
     ${heightBlock(m)}
     ${routeBlock(m)}
-    ${auto || state.source === 'save-copy' ? '' : `<button class="toggle">${found ? t('popup.unmark') : t('popup.mark')}</button>`}
+    ${auto || (state.source === 'save-copy' && !state.character?.profileId) ? '' : `<button class="toggle">${found ? t('popup.unmark') : t('popup.mark')}</button>`}
   `;
   fillRoute(el, m);
   const [x, y] = map.toScreen(m.px, m.py);
@@ -892,7 +892,10 @@ function closePopup() {
 }
 
 async function toggleCheck(id, on) {
-  if (state.source === 'save-copy') return;
+  if (state.source === 'save-copy') {
+    await Companion.manual({ type: 'check', id, on });
+    return;
+  }
   if (state.source === 'mock') {
     await Companion.manual({ type: 'check', id, on });
     return;
@@ -1250,7 +1253,7 @@ function applyState(s) {
   // the live reader matched to the running game. Neither yet, the first slot.
   const c = state.characters.find((x) => x.slot === s.activeSlot) || state.characters[0] || null;
   state.character = c;
-  if (s.source === 'mock') state.checked = c?.manual.checked || {};
+  if (s.source === 'mock' || s.source === 'save-copy') state.checked = c?.manual?.checked || {};
   if (window.Companion) Companion.render(s, c);
   state.found = new Set(c ? c.found || [] : []);
   refreshSaveEntry(s);
@@ -1264,7 +1267,7 @@ function applyState(s) {
 
   renderCharacter(c);
   refreshCounts();
-  if (s.source === 'mock' && state.selected && state.byId.has(state.selected)) showPopup(state.byId.get(state.selected));
+  if ((s.source === 'mock' || s.source === 'save-copy') && state.selected && state.byId.has(state.selected)) showPopup(state.byId.get(state.selected));
   if (map) map.requestDraw();
   recentreOnPlayer();
 

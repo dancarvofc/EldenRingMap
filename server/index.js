@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+const { ManualState } = require('./lib/manualState');
 const { MockProvider } = require('./lib/mockProvider');
 const { SaveReader } = require('./lib/saveParser');
 const { Projector, TILE_WORLD, OFFSET_X, OFFSET_Y } = require('./lib/project');
@@ -178,6 +179,8 @@ function computeFound(character) {
 const clients = new Set();
 let mockMap = 'synthetic';
 let saveCopyMode = false;
+let copyManual = null;
+const copyBindings = new Map();
 let current = null;      // last good snapshot sent to clients
 let live = null;         // optional LiveMemory bridge
 let activeSlot = null;   // the slot on screen: picked in the sidebar, or matched to the running game
@@ -296,7 +299,18 @@ function buildSnapshot(reader, savePath) {
   const parsed = reader.read();
   const chars = parsed.characters.map((c) => {
     const found = c.ok && (parsed.source === 'mock' || c.checksumOk === true) ? computeFound(c) : [];
+    let association = null;
+    if (saveCopyMode) {
+      association = copyBindings.get(c.slot);
+      if (association && association.observationToken !== c.observationToken) {
+        copyBindings.delete(c.slot);
+        association = null;
+      }
+    }
     return {
+      ...(saveCopyMode ? { observationToken: c.observationToken,
+        profileId: association?.profileId || null,
+        manual: association ? copyManual.read(association.profileId) : null } : {}),
       ...(parsed.source === 'mock' ? { profileId: c.profileId, source: c.source,
         integrity: c.integrity, snapshotId: c.snapshotId, quests: c.quests, manual: c.manual } : {}),
       slot: c.slot,
@@ -319,7 +333,7 @@ function buildSnapshot(reader, savePath) {
   try { mtime = fs.statSync(savePath).mtimeMs; } catch { /* gone */ }
   return {
     ...(parsed.source === 'mock' ? { source: 'mock', mapSource: mockMap, notice: parsed.notice, revision: parsed.revision } : {}),
-    ...(saveCopyMode ? { source: 'save-copy', readOnly: true, questsStatus: 'unknown' } : {}),
+    ...(saveCopyMode ? { source: 'save-copy', readOnly: true, questsStatus: 'unknown', manualProfiles: copyManual.list() } : {}),
     savePath,
     mtime,
     encrypted: parsed.encrypted,
@@ -446,6 +460,7 @@ function main() {
       process.exit(1);
     }
     saveCopyMode = true;
+    copyManual = new ManualState(args.manualState || path.join(ROOT, 'cache', 'real-manual-state.json'));
     args.save = args.saveCopy;
   }
   if (args.mockMap && (!args.mock || !['synthetic', 'local'].includes(args.mockMap))) {
@@ -540,6 +555,9 @@ function main() {
     const url = new URL(req.url, 'http://localhost');
     const p = url.pathname;
 
+    if ((args.mock || saveCopyMode) && !/^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(req.headers.host || '')) {
+      return json(res, { error: 'Local inspection requires a localhost Host' }, 403);
+    }
     if ((args.mock || saveCopyMode) && req.method === 'POST' &&
         (req.headers['sec-fetch-site'] === 'cross-site' ||
          (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`))) {
@@ -560,13 +578,41 @@ function main() {
       });
       return;
     }
-    if (p === '/api/manual' && args.mock && req.method === 'POST') {
+    if (p === '/api/profiles' && saveCopyMode && req.method === 'POST') {
       let body = '';
       req.on('data', (chunk) => { body += chunk; if (body.length > 4096) req.destroy(); });
       req.on('end', () => {
         try {
-          const { profileId, ...action } = JSON.parse(body);
-          const manual = reader.manual.update(profileId, action);
+          const request = JSON.parse(body);
+          current = buildSnapshot(reader, savePath); current.activeSlot = activeSlot;
+          const character = current.characters.find((c) => c.slot === request.slot);
+          if (!character || !character.ok || character.observationToken !== request.observationToken) throw new Error('Character changed; reload and associate again');
+          let profileId = request.profileId;
+          if (request.type === 'create') profileId = copyManual.createProfile(request.label);
+          else if (request.type !== 'bind') throw new Error('Unknown profile action');
+          copyManual.read(profileId);
+          if ([...copyBindings.entries()].some(([slot, binding]) => slot !== request.slot && binding.profileId === profileId)) throw new Error('Profile already associated with another character');
+          copyBindings.set(request.slot, { profileId, observationToken: character.observationToken });
+          current = buildSnapshot(reader, savePath); current.activeSlot = activeSlot;
+          broadcast('state', { ...current, newlyFound: [] });
+          json(res, { ok: true, profileId });
+        } catch (error) { json(res, { error: error.message }, 400); }
+      });
+      return;
+    }
+    if (p === '/api/manual' && (args.mock || saveCopyMode) && req.method === 'POST') {
+      let body = '';
+      req.on('data', (chunk) => { body += chunk; if (body.length > 4096) req.destroy(); });
+      req.on('end', () => {
+        try {
+          const { profileId, slot, observationToken, ...action } = JSON.parse(body);
+          if (saveCopyMode) {
+            current = buildSnapshot(reader, savePath); current.activeSlot = activeSlot;
+            const character = current.characters.find((c) => c.slot === slot);
+            if (!character || !character.ok || !character.profileId || character.profileId !== profileId ||
+                character.observationToken !== observationToken) throw new Error('Explicit character association required');
+          }
+          const manual = (saveCopyMode ? copyManual : reader.manual).update(profileId, action);
           current = buildSnapshot(reader, savePath);
           current.activeSlot = activeSlot;
           broadcast('state', { ...current, newlyFound: [] });
@@ -638,7 +684,7 @@ data: ${JSON.stringify(live.pos)}
     }
 
     if (p === '/api/check' && req.method === 'POST') {
-      if (saveCopyMode) return json(res, { error: 'Manual writes disabled for save-copy inspection' }, 409);
+      if (saveCopyMode) return json(res, { error: 'Use /api/manual with an explicitly associated local profile' }, 409);
       if (args.mock) return json(res, { error: 'Use /api/manual with an explicit profileId in mock mode' }, 409);
       let body = '';
       req.on('data', (d) => { body += d; if (body.length > 1e6) req.destroy(); });

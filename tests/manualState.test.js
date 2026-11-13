@@ -54,3 +54,16 @@ test('invalid actions, corrupt data and failed disk writes preserve existing sta
   assert.throws(() => new ManualState(file, ['mock:jinx']));
   assert.equal(fs.readFileSync(file, 'utf8'), '{broken');
 });
+
+test('explicit local profiles persist their identity independently of labels and game snapshots', (t) => {
+  const file = location(t);
+  const store = new ManualState(file);
+  const first = store.createProfile('Same label'); const second = store.createProfile('Same label');
+  assert.notEqual(first, second);
+  store.update(first, { type: 'create', title: 'Only first profile' });
+  const reloaded = new ManualState(file);
+  assert.equal(reloaded.list().length, 2);
+  assert.equal(reloaded.read(first).custom.length, 1);
+  assert.equal(reloaded.read(second).custom.length, 0);
+  assert.throws(() => reloaded.createProfile(' '));
+});

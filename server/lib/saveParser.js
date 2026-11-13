@@ -5,7 +5,7 @@
  * Read-only. Nothing in this project ever writes to your save file.
  */
 const fs = require('fs');
-const path = require('path');
+const { createHash } = require('crypto');
 const { readBnd4, readEntryPayload } = require('./bnd4');
 const { walkSlot, readCharacter, readPosition, EventFlags, EF_LEN } = require('./slotWalk');
 
@@ -100,7 +100,8 @@ class SaveReader {
       const ent = byName.get(`USER_DATA${String(p.slot).padStart(3, '0')}`) || entries[p.slot];
       if (!ent) continue;
       const res = readEntryPayload(buf, ent);
-      const c = { ...p, checksumOk: res.checksumOk, encrypted: res.encrypted };
+      const c = { ...p, checksumOk: res.checksumOk, encrypted: res.encrypted,
+        observationToken: createHash('sha256').update(res.payload).update(JSON.stringify(p)).digest('hex') };
       try {
         if (!res.checksumOk) throw new Error('Invalid character checksum');
         const w = walkSlot(res.payload);

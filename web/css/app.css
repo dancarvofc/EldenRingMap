@@ -367,3 +367,14 @@ html, body {
 /* Local-map preview preserves the upstream filters, search and map options. */
 .mock-mode.local-map #categories, .mock-mode.local-map [data-panel=search],
 .mock-mode.local-map [data-panel=options] { display: block; }
+
+#save-copy-notice input, #save-copy-notice select { display: block; width: 100%; min-width: 0; margin: 8px 0; padding: 10px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+#save-copy-notice button { min-height: 44px; margin-bottom: 12px; padding: 8px; background: var(--panel-2); color: var(--text); border: 1px solid var(--gold-soft); cursor: pointer; }
+#profile-error { color: #ffaaaa; overflow-wrap: anywhere; }
+.real-profile-mode #companion > .simulation-badge,
+.real-profile-mode #companion > h2, .real-profile-mode #companion > label,
+.real-profile-mode #mock-snapshot, .real-profile-mode #quest-timeline,
+.real-profile-mode #focus-npc { display: none; }
+
+.real-profile-mode #mock-milestones { display: none; }
+#save-copy-notice label, #save-copy-notice button { display: block; }

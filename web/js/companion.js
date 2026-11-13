@@ -11,30 +11,37 @@ window.Companion = (() => {
   }
   async function post(route, data) {
     byId('companion-error').textContent = '';
+    byId('profile-error').textContent = '';
     try {
       const response = await fetch(route, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Falha ao salvar');
       return true;
     } catch (error) {
-      byId('companion-error').textContent = `Não foi possível salvar: ${error.message}`;
+      const errorId = state.source === 'save-copy' ? 'profile-error' : 'companion-error';
+      byId(errorId).textContent = `Não foi possível salvar: ${error.message}`;
       return false;
     }
   }
   async function manual(action) {
     if (!character) return false;
-    return post('api/manual', { profileId: character.profileId, ...action });
+    return post('api/manual', { profileId: character.profileId,
+      ...(state.source === 'save-copy' ? { slot: character.slot, observationToken: character.observationToken } : {}), ...action });
   }
   function render(snapshot, selected) {
     byId('save-copy-notice').hidden = snapshot.source !== 'save-copy';
     const panel = byId('companion');
-    panel.hidden = snapshot.source !== 'mock';
+    const real = snapshot.source === 'save-copy';
+    character = selected;
+    panel.hidden = snapshot.source !== 'mock' && !(real && selected?.profileId);
+    document.body.classList.toggle('real-profile-mode', real);
+    if (real && selected) renderAssociation(snapshot, selected);
     document.body.classList.toggle('mock-mode', snapshot.source === 'mock');
     if (panel.hidden || !selected) return;
     character = selected;
-    const localMap = snapshot.mapSource === 'local';
+    const localMap = snapshot.mapSource === 'local' || real;
     document.body.classList.toggle('local-map', localMap);
-    document.querySelector('.simulation-badge').textContent = localMap
+    panel.querySelector('.simulation-badge').textContent = localMap
       ? 'MAPA REAL LOCAL · progresso simulado · NPC fictício oculto'
       : 'SIMULAÇÃO · sem dados reais do jogo';
     byId('mock-snapshot').value = selected.snapshotId;
@@ -75,7 +82,8 @@ window.Companion = (() => {
       const input = byId('custom-title'); const title = input.value;
       if (await manual({ type: 'create', title }) && input.value === title) input.value = '';
     };
-    const npc = selected.quests[0]?.npc;
+    if (real) return;
+    const npc = selected.quests?.[0]?.npc;
     const id = 'mock.npc.millicent';
     state.markers = state.markers.filter((marker) => marker.id !== id);
     state.byId.delete(id);
@@ -91,6 +99,22 @@ window.Companion = (() => {
       if (matchMedia('(max-width: 700px)').matches) byId('sb-collapse').click();
     };
     if (state.selected === id) closePopup();
+  }
+  function renderAssociation(snapshot, selected) {
+    const profiles = snapshot.manualProfiles || [];
+    const currentProfile = profiles.find((p) => p.profileId === selected.profileId);
+    byId('profile-status').textContent = currentProfile
+      ? `Perfil associado: ${currentProfile.label}` : 'Sem associação: suas marcações estão protegidas.';
+    const select = byId('profile-select'); const previous = select.value;
+    select.replaceChildren();
+    for (const profile of profiles) {
+      const option = element('option', profile.label); option.value = profile.profileId; select.append(option);
+    }
+    if (profiles.some((p) => p.profileId === previous)) select.value = previous;
+    byId('profile-bind').disabled = !profiles.length;
+    const association = (data) => post('api/profiles', { ...data, slot: selected.slot, observationToken: selected.observationToken });
+    byId('profile-create').onclick = () => association({ type: 'create', label: byId('profile-label').value });
+    byId('profile-bind').onclick = () => association({ type: 'bind', profileId: select.value });
   }
   return { render, manual };
 })();

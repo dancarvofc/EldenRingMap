@@ -4,9 +4,10 @@ const path = require('path');
 const { randomUUID } = require('crypto');
 
 class ManualState {
-  constructor(file, profileIds) {
+  constructor(file, profileIds = null) {
+    this.dynamic = profileIds === null;
     this.file = file;
-    this.profileIds = new Set(profileIds);
+    this.profileIds = new Set(profileIds || []);
     this.state = { schemaVersion: 1, profiles: {} };
     try {
       const state = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -24,6 +25,21 @@ class ManualState {
     } catch (error) {
       if (error.code !== 'ENOENT') throw error; // Never overwrite unreadable/corrupt progress.
     }
+    if (this.dynamic) this.profileIds = new Set(Object.keys(this.state.profiles));
+  }
+
+  list() {
+    return Object.entries(this.state.profiles).map(([profileId, profile]) => ({ profileId, label: profile.label || profileId }));
+  }
+
+  createProfile(label) {
+    if (!this.dynamic || typeof label !== 'string' || !label.trim() || label.length > 100) throw new Error('Invalid profile label');
+    const profileId = `local:${randomUUID()}`;
+    const next = structuredClone(this.state);
+    next.profiles[profileId] = { label: label.trim(), checked: {}, custom: [] };
+    this.persist(next);
+    this.profileIds.add(profileId);
+    return profileId;
   }
 
   read(profileId) {
@@ -55,6 +71,11 @@ class ManualState {
     } else throw new Error('Unknown manual action');
     const next = structuredClone(this.state);
     next.profiles[profileId] = profile;
+    this.persist(next);
+    return this.read(profileId);
+  }
+
+  persist(next) {
     const temporary = `${this.file}.${randomUUID()}.tmp`;
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
     try {
@@ -64,7 +85,6 @@ class ManualState {
       try { fs.unlinkSync(temporary); } catch (error) { if (error.code !== 'ENOENT') throw error; }
     }
     this.state = next; // Commit in memory only after successful disk replacement.
-    return this.read(profileId);
   }
 }
 module.exports = { ManualState };
