@@ -6,7 +6,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { readBnd4, readEntryPayload, md5 } = require('./bnd4');
+const { readBnd4, readEntryPayload } = require('./bnd4');
 const { walkSlot, readCharacter, readPosition, EventFlags, EF_LEN } = require('./slotWalk');
 
 /* USER_DATA010 - the summary shown on the load-game screen. Offsets are
@@ -64,23 +64,17 @@ function readProfiles(payload) {
  */
 function readStable(file, tries = 15, waitMs = 80) {
   const sab = new Int32Array(new SharedArrayBuffer(4));
-  let last = null;
+
   for (let i = 0; i < tries; i++) {
     try {
       const buf = fs.readFileSync(file);
       const { entries } = readBnd4(buf);
-      const ok = entries.every((e) => {
-        const block = buf.subarray(e.dataOffset, e.dataOffset + e.size);
-        return md5(block.subarray(16)).equals(block.subarray(0, 16));
-      });
+      const ok = entries.every((entry) => readEntryPayload(buf, entry).checksumOk);
       if (ok) return buf;
-      last = buf;
-    } catch (err) {
-      last = null;
-    }
+    } catch { /* Incomplete container or payload; retry a fresh read. */ }
     Atomics.wait(sab, 0, 0, waitMs);
   }
-  return last;   // torn or genuinely modified; caller decides
+  return null;   // Never return an unverified snapshot.
 }
 
 class SaveReader {
@@ -91,12 +85,13 @@ class SaveReader {
 
   read() {
     const buf = readStable(this.savePath);
-    if (!buf) throw new Error(`could not read ${this.savePath}`);
+    if (!buf) throw new Error(`could not read a checksum-verified save: ${this.savePath}`);
 
     const { entries } = readBnd4(buf);
     const byName = new Map(entries.map((e) => [e.name, e]));
     const headerEntry = byName.get('USER_DATA010') || entries[10];
     const header = readEntryPayload(buf, headerEntry);
+    if (!header.checksumOk) throw new Error('Invalid save summary checksum');
     const profiles = readProfiles(header.payload);
 
     const characters = [];
@@ -107,6 +102,7 @@ class SaveReader {
       const res = readEntryPayload(buf, ent);
       const c = { ...p, checksumOk: res.checksumOk, encrypted: res.encrypted };
       try {
+        if (!res.checksumOk) throw new Error('Invalid character checksum');
         const w = walkSlot(res.payload);
         c.stats = readCharacter(res.payload, w);
         c.deaths = w.deaths;

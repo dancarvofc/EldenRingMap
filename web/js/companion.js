@@ -26,6 +26,7 @@ window.Companion = (() => {
     return post('api/manual', { profileId: character.profileId, ...action });
   }
   function render(snapshot, selected) {
+    byId('save-copy-notice').hidden = snapshot.source !== 'save-copy';
     const panel = byId('companion');
     panel.hidden = snapshot.source !== 'mock';
     document.body.classList.toggle('mock-mode', snapshot.source === 'mock');

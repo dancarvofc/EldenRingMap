@@ -18,7 +18,7 @@
  *       -> decrypts to [16-byte MD5 of the remainder][payload]
  *
  * We detect which by testing the MD5 on the raw bytes first. Vanilla Steam saves
- * are (b); saves that have passed through a save editor / manager are often (a).
+ * may use either representation. Accept a payload only when its checksum verifies.
  */
 const crypto = require('crypto');
 
@@ -44,14 +44,22 @@ function readBnd4(buf) {
   if (fileCount <= 0 || fileCount > 256) {
     throw new Error(`BND4 fileCount out of range: ${fileCount}`);
   }
+  const directoryEnd = 0x40 + fileCount * 0x20;
+  if (directoryEnd > buf.length) throw new Error('Truncated BND4 directory');
   const entries = [];
   for (let i = 0; i < fileCount; i++) {
     const o = 0x40 + i * 0x20;
     const size = Number(buf.readBigUInt64LE(o + 0x08));
     const dataOffset = buf.readUInt32LE(o + 0x10);
     const nameOffset = buf.readUInt32LE(o + 0x14);
+    if (!Number.isSafeInteger(size) || size < 32 || dataOffset < directoryEnd ||
+        dataOffset + size > buf.length || nameOffset < directoryEnd ||
+        nameOffset + 2 > buf.length || nameOffset % 2 !== 0) {
+      throw new Error(`Invalid BND4 entry bounds: ${i}`);
+    }
     let e = nameOffset;
     while (e + 1 < buf.length && buf.readUInt16LE(e) !== 0) e += 2;
+    if (e + 1 >= buf.length) throw new Error('Unterminated BND4 entry name');
     entries.push({
       index: i,
       name: buf.toString('utf16le', nameOffset, e),
@@ -67,6 +75,7 @@ function readBnd4(buf) {
  * plus how it was stored.
  */
 function readEntryPayload(buf, entry, key = ER_SAVE_KEY) {
+  if (!entry) throw new Error('Missing BND4 entry');
   const block = buf.subarray(entry.dataOffset, entry.dataOffset + entry.size);
   if (block.length < MD5_LEN + 16) {
     throw new Error(`entry ${entry.name}: block too small (${block.length})`);

@@ -32,6 +32,7 @@ function parseArgs(argv) {
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--mock') out.mock = true;
+    else if (a === '--save-copy') out.saveCopy = argv[++i];
     else if (a === '--mock-map') out.mockMap = argv[++i];
     else if (a === '--manual-state') out.manualState = argv[++i];
     else if (a === '--port') out.port = Number(argv[++i]);
@@ -176,6 +177,7 @@ function computeFound(character) {
 
 const clients = new Set();
 let mockMap = 'synthetic';
+let saveCopyMode = false;
 let current = null;      // last good snapshot sent to clients
 let live = null;         // optional LiveMemory bridge
 let activeSlot = null;   // the slot on screen: picked in the sidebar, or matched to the running game
@@ -293,7 +295,7 @@ function broadcast(event, payload) {
 function buildSnapshot(reader, savePath) {
   const parsed = reader.read();
   const chars = parsed.characters.map((c) => {
-    const found = c.ok ? computeFound(c) : [];
+    const found = c.ok && (parsed.source === 'mock' || c.checksumOk === true) ? computeFound(c) : [];
     return {
       ...(parsed.source === 'mock' ? { profileId: c.profileId, source: c.source,
         integrity: c.integrity, snapshotId: c.snapshotId, quests: c.quests, manual: c.manual } : {}),
@@ -302,6 +304,7 @@ function buildSnapshot(reader, savePath) {
       level: c.level,
       secondsPlayed: c.secondsPlayed,
       ok: c.ok,
+      checksumOk: c.checksumOk ?? null,
       error: c.error || null,
       stats: c.stats || null,
       position: c.position || null,
@@ -316,12 +319,13 @@ function buildSnapshot(reader, savePath) {
   try { mtime = fs.statSync(savePath).mtimeMs; } catch { /* gone */ }
   return {
     ...(parsed.source === 'mock' ? { source: 'mock', mapSource: mockMap, notice: parsed.notice, revision: parsed.revision } : {}),
+    ...(saveCopyMode ? { source: 'save-copy', readOnly: true, questsStatus: 'unknown' } : {}),
     savePath,
     mtime,
     encrypted: parsed.encrypted,
     characters: chars,
     markerCount: MARKERS.length,
-    checked: parsed.source === 'mock' ? {} : userState.checked,
+    checked: parsed.source === 'mock' || saveCopyMode ? {} : userState.checked,
     live: live ? live.state : { enabled: false, status: 'off' },
     at: Date.now(),
   };
@@ -420,6 +424,7 @@ function main() {
   const args = parseArgs(process.argv);
   if (args.help) {
     console.log('usage: node server/index.js [options]');
+    console.log('  --save-copy <path>  passive copy inspection; manual writes and LAN disabled');
     console.log('  --manual-state <path>  mock manual-state JSON (default cache/mock-manual-state.json)');
     console.log('  --mock-map <synthetic|local>  choose mock map (default synthetic)');
     console.log('  --mock          fictional profiles and quests; never opens a save');
@@ -435,6 +440,14 @@ function main() {
     return;
   }
 
+  if (args.saveCopy) {
+    if (args.mock || args.save || args.liveMemory || args.host !== '127.0.0.1') {
+      console.error('--save-copy cannot be combined with --mock, --save, --live-memory or LAN');
+      process.exit(1);
+    }
+    saveCopyMode = true;
+    args.save = args.saveCopy;
+  }
   if (args.mockMap && (!args.mock || !['synthetic', 'local'].includes(args.mockMap))) {
     console.error('--mock-map requires --mock and synthetic or local');
     process.exit(1);
@@ -490,9 +503,9 @@ function main() {
    * game say otherwise.
    */
   const switchSave = (nextPath, slot) => {
-    if (args.mock) {
+    if (args.mock || saveCopyMode) {
       if (nextPath !== savePath || !Number.isInteger(slot) || !hasSlot(current, slot)) {
-        throw new Error('Unknown mock character');
+        throw new Error('Unknown inspection character');
       }
       activeSlot = slot;
       current.activeSlot = slot;
@@ -527,7 +540,7 @@ function main() {
     const url = new URL(req.url, 'http://localhost');
     const p = url.pathname;
 
-    if (args.mock && req.method === 'POST' &&
+    if ((args.mock || saveCopyMode) && req.method === 'POST' &&
         (req.headers['sec-fetch-site'] === 'cross-site' ||
          (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`))) {
       return json(res, { error: 'Cross-origin writes are not allowed' }, 403);
@@ -583,8 +596,8 @@ function main() {
       ? { locales: ['en'], markers: [] } : MARKER_DOC);
 
     if (p === '/api/saves' && req.method === 'GET') {
-      if (args.mock) return json(res, { current: savePath, slot: activeSlot,
-        saves: [{ path: savePath, extension: '.mock', characters: current.characters.map(
+      if (args.mock || saveCopyMode) return json(res, { current: savePath, slot: activeSlot,
+        saves: [{ path: savePath, extension: args.mock ? '.mock' : path.extname(savePath), characters: current.characters.map(
           ({ slot, name, level }) => ({ slot, name, level })) }] });
       const saves = listSaves(savePath).map((s) => ({
         ...s,
@@ -625,6 +638,7 @@ data: ${JSON.stringify(live.pos)}
     }
 
     if (p === '/api/check' && req.method === 'POST') {
+      if (saveCopyMode) return json(res, { error: 'Manual writes disabled for save-copy inspection' }, 409);
       if (args.mock) return json(res, { error: 'Use /api/manual with an explicit profileId in mock mode' }, 409);
       let body = '';
       req.on('data', (d) => { body += d; if (body.length > 1e6) req.destroy(); });

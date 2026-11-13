@@ -858,7 +858,7 @@ function showPopup(m) {
     </div>
     ${heightBlock(m)}
     ${routeBlock(m)}
-    ${auto ? '' : `<button class="toggle">${found ? t('popup.unmark') : t('popup.mark')}</button>`}
+    ${auto || state.source === 'save-copy' ? '' : `<button class="toggle">${found ? t('popup.unmark') : t('popup.mark')}</button>`}
   `;
   fillRoute(el, m);
   const [x, y] = map.toScreen(m.px, m.py);
@@ -892,6 +892,7 @@ function closePopup() {
 }
 
 async function toggleCheck(id, on) {
+  if (state.source === 'save-copy') return;
   if (state.source === 'mock') {
     await Companion.manual({ type: 'check', id, on });
     return;
