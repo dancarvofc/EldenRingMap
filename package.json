@@ -11,7 +11,9 @@
     "inspect-save": "python tools/er_save.py",
     "verify-markers": "python tools/verify_markers.py",
     "start:live": "node server/index.js --live-memory",
-    "check-live": "python tools/live_memory.py --probe"
+    "check-live": "python tools/live_memory.py --probe",
+    "test": "node --test",
+    "start:mock": "node server/index.js --mock"
   },
   "engines": {
     "node": ">=18"

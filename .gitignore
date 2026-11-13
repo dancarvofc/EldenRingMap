@@ -51,3 +51,9 @@ cache/map-list.txt
 # own use. It must not be committed or published - see the tool's header.
 data/tips.json
 cache/tips/
+
+# Private saves must never be published.
+*.sl2
+*.sl2.bak
+*.co2
+*.err

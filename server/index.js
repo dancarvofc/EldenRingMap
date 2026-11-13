@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+const { MockProvider } = require('./lib/mockProvider');
 const { SaveReader } = require('./lib/saveParser');
 const { Projector, TILE_WORLD, OFFSET_X, OFFSET_Y } = require('./lib/project');
 const { LiveMemory } = require('./lib/liveMemory');
@@ -30,7 +31,8 @@ function parseArgs(argv) {
                 liveMemory: false, python: 'python', hz: 20 };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--port') out.port = Number(argv[++i]);
+    if (a === '--mock') out.mock = true;
+    else if (a === '--port') out.port = Number(argv[++i]);
     else if (a === '--save') out.save = argv[++i];
     else if (a === '--poll') out.poll = Number(argv[++i]);
     else if (a === '--host') out.host = argv[++i];
@@ -290,6 +292,8 @@ function buildSnapshot(reader, savePath) {
   const chars = parsed.characters.map((c) => {
     const found = c.ok ? computeFound(c) : [];
     return {
+      ...(parsed.source === 'mock' ? { profileId: c.profileId, source: c.source,
+        integrity: c.integrity, snapshotId: c.snapshotId, quests: c.quests } : {}),
       slot: c.slot,
       name: c.name,
       level: c.level,
@@ -308,12 +312,13 @@ function buildSnapshot(reader, savePath) {
   let mtime = null;
   try { mtime = fs.statSync(savePath).mtimeMs; } catch { /* gone */ }
   return {
+    ...(parsed.source === 'mock' ? { source: 'mock', notice: parsed.notice, revision: parsed.revision } : {}),
     savePath,
     mtime,
     encrypted: parsed.encrypted,
     characters: chars,
     markerCount: MARKERS.length,
-    checked: userState.checked,
+    checked: parsed.source === 'mock' ? {} : userState.checked,
     live: live ? live.state : { enabled: false, status: 'off' },
     at: Date.now(),
   };
@@ -412,6 +417,7 @@ function main() {
   const args = parseArgs(process.argv);
   if (args.help) {
     console.log('usage: node server/index.js [options]');
+    console.log('  --mock          fictional profiles and quests; never opens a save');
     console.log('  --port <n>      listen port (default 8099)');
     console.log('  --save <path>   ER0000.sl2 to watch (default: auto-detect)');
     console.log('  --lan           also accept connections from your local network');
@@ -424,22 +430,26 @@ function main() {
     return;
   }
 
-  let savePath = args.save || findSave();
-  if (!savePath || !fs.existsSync(savePath)) {
+  if (args.mock && (args.save || args.liveMemory || args.host !== '127.0.0.1')) {
+    console.error('--mock is local-only and cannot be combined with --save or --live-memory');
+    process.exit(1);
+  }
+  let savePath = args.mock ? 'mock://demo' : args.save || findSave();
+  if (!args.mock && (!savePath || !fs.existsSync(savePath))) {
     console.error('Could not find ER0000.sl2.');
     console.error('Pass one explicitly:  node server/index.js --save "C:\\path\\to\\ER0000.sl2"');
     process.exit(1);
   }
   const bst = path.join(DATA, 'eventflag_bst.txt');
-  if (!fs.existsSync(bst)) {
+  if (!args.mock && !fs.existsSync(bst)) {
     console.error(`missing ${bst} - the event-flag block table is required`);
     process.exit(1);
   }
-  if (!MARKERS.length) {
+  if (!args.mock && !MARKERS.length) {
     console.warn('warning: data/markers.json is empty - run `python tools/build_markers.py`');
   }
 
-  let reader = new SaveReader(savePath, bst);
+  let reader = args.mock ? new MockProvider() : new SaveReader(savePath, bst);
   try {
     current = buildSnapshot(reader, savePath);
   } catch (err) {
@@ -465,6 +475,15 @@ function main() {
    * game say otherwise.
    */
   const switchSave = (nextPath, slot) => {
+    if (args.mock) {
+      if (nextPath !== savePath || !Number.isInteger(slot) || !hasSlot(current, slot)) {
+        throw new Error('Unknown mock character');
+      }
+      activeSlot = slot;
+      current.activeSlot = slot;
+      broadcast('state', { ...current, newlyFound: [] });
+      return;
+    }
     let next = current;
     let nextReader = reader;
     if (nextPath !== savePath) {
@@ -493,10 +512,33 @@ function main() {
     const url = new URL(req.url, 'http://localhost');
     const p = url.pathname;
 
+    if (args.mock && req.method === 'POST' &&
+        (req.headers['sec-fetch-site'] === 'cross-site' ||
+         (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`))) {
+      return json(res, { error: 'Cross-origin writes are not allowed' }, 403);
+    }
+    if (p === '/api/mock/snapshot' && args.mock && req.method === 'POST') {
+      let body = '';
+      req.on('data', (chunk) => { body += chunk; if (body.length > 4096) req.destroy(); });
+      req.on('end', () => {
+        try {
+          const { profileId, snapshotId } = JSON.parse(body);
+          reader.select(profileId, snapshotId);
+          current = buildSnapshot(reader, savePath);
+          current.activeSlot = activeSlot;
+          broadcast('state', { ...current, newlyFound: [] });
+          json(res, { ok: true });
+        } catch (error) { json(res, { error: error.message }, 400); }
+      });
+      return;
+    }
     if (p === '/api/state') return json(res, current);
     if (p === '/api/markers') return json(res, MARKER_DOC);
 
     if (p === '/api/saves' && req.method === 'GET') {
+      if (args.mock) return json(res, { current: savePath, slot: activeSlot,
+        saves: [{ path: savePath, extension: '.mock', characters: current.characters.map(
+          ({ slot, name, level }) => ({ slot, name, level })) }] });
       const saves = listSaves(savePath).map((s) => ({
         ...s,
         characters: readSaveCharacters(s.path, bst),
@@ -536,6 +578,7 @@ data: ${JSON.stringify(live.pos)}
     }
 
     if (p === '/api/check' && req.method === 'POST') {
+      if (args.mock) return json(res, { error: 'Mock manual persistence is planned for delivery 2' }, 409);
       let body = '';
       req.on('data', (d) => { body += d; if (body.length > 1e6) req.destroy(); });
       req.on('end', () => {
@@ -565,7 +608,7 @@ data: ${JSON.stringify(live.pos)}
     return serveStatic(req, res, p);
   });
 
-  stopWatcher = startWatcher(reader, savePath, args.poll);
+  if (!args.mock) stopWatcher = startWatcher(reader, savePath, args.poll);
 
   if (args.liveMemory) {
     live = new LiveMemory({
@@ -619,12 +662,12 @@ data: ${JSON.stringify(live.pos)}
       console.log('  live      real-time position from the running game (read-only)');
     }
     console.log('');
-    console.log(`  open  http://localhost:${args.port}`);
+    console.log(`  open  http://localhost:${server.address().port}`);
     if (args.host === '0.0.0.0') {
       for (const [, addrs] of Object.entries(os.networkInterfaces())) {
         for (const a of addrs || []) {
           if (a.family === 'IPv4' && !a.internal) {
-            console.log(`  LAN   http://${a.address}:${args.port}`);
+            console.log(`  LAN   http://${a.address}:${server.address().port}`);
           }
         }
       }

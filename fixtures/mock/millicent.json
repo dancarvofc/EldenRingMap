@@ -1,0 +1,12 @@
+{
+  "notice": "SIMULATION: original fictional rules, flags and pixel coordinates; not a real Millicent walkthrough.",
+  "profiles": [
+    { "profileId": "mock:jinx", "slot": 0, "name": "Jinx", "level": 1 },
+    { "profileId": "mock:guts", "slot": 1, "name": "Guts", "level": 1 }
+  ],
+  "snapshots": {
+    "not-started": { "mock.millicent.met": false, "mock.millicent.helped": false, "mock.millicent.finished": false },
+    "intermediate": { "mock.millicent.met": true, "mock.millicent.helped": true, "mock.millicent.finished": false },
+    "completed": { "mock.millicent.met": true, "mock.millicent.helped": true, "mock.millicent.finished": true }
+  }
+}
