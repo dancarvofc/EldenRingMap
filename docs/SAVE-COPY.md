@@ -82,3 +82,23 @@ personagens diferentes. O servidor impede vínculo simultâneo em dois slots.
 
 O save continua apenas leitura. O campo `readOnly` refere-se ao save; ações
 manuais escrevem exclusivamente no JSON separado do companion.
+
+## Marcos · chefes
+
+Abra o painel **Marcos · chefes** na inspeção. Ele está disponível mesmo sem
+associar perfil manual. Busca por nome e filtros de estado/camada organizam os
+marcadores já extraídos da instalação local; não é um catálogo novo.
+
+**Derrota registrada** exige flag ativa no personagem de checksum válido.
+**Derrota não registrada** indica flag false, sem afirmar se o chefe está
+acessível. **Desconhecido** significa ausência de evidência confiável. Não existe
+estado de quest perdida neste painel. A lista é recalculada de cada snapshot,
+inclusive após restaurar backup; as notas manuais continuam independentes.
+
+Em **Ver evidências**, consulte ID da flag, valor esperado/observado, origem e
+versão da regra. **Ver no mapa** reutiliza camada, posição, canvas e popup do
+marcador original. Nomes de arenas e cobertura têm as limitações do extrator;
+a lista não promete representar todos os chefes possíveis do jogo.
+
+Esses marcos não avaliam quests de NPC, pontos sem retorno nem consequências
+narrativas de uma vitória. Nenhum registro de marcação manual prova derrota.

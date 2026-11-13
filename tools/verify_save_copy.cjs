@@ -32,9 +32,40 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       for (let i = 0; i < characters.characters.length; i++) {
         await page.locator('#save-character').selectOption({ index: i });
         const expected = characters.characters[i];
+        const bossIds = new Set(expected.milestones.map((item) => item.markerId));
+        assert.deepEqual(expected.milestones.filter((item) => item.status === 'completed').map((item) => item.markerId).sort(), expected.found.filter((id) => bossIds.has(id)).sort());
         await page.waitForFunction((name) => document.querySelector('#char-name').textContent === name, expected.name);
         assert.equal(await page.evaluate(() => state.found.size), expected.found.length);
       }
+      const milestoneData = await page.evaluate(() => state.character.milestones);
+      assert.ok(milestoneData.length > 0);
+      await page.locator('#real-milestones > details > summary').click();
+      assert.equal(await page.locator('.milestone').count(), milestoneData.length);
+      await page.locator('#milestone-status').selectOption('completed');
+      assert.equal(await page.locator('.milestone').count(), milestoneData.filter((m) => m.status === 'completed').length);
+      if (await page.locator('.milestone').count()) {
+        await page.locator('.milestone details summary').first().click();
+        assert.match(await page.locator('.milestone details').first().innerText(), /observado true/);
+      }
+      await page.locator('#real-milestones').screenshot({ path: path.join(artifacts, `milestones-${width}.png`) });
+      await page.locator('#milestone-search').fill('no-such-synthetic-boss-xyz');
+      assert.equal(await page.locator('.milestone').count(), 0);
+      await page.locator('#milestone-search').fill('');
+      await page.locator('#milestone-status').selectOption('all');
+      const target = await page.evaluate(() => {
+        const marker = state.markers.find((m) => m.cat === 'boss' && m.master === 'M10');
+        return marker && { id: marker.id, master: marker.master };
+      });
+      if (target) {
+        await page.locator(`.milestone[data-marker-id="${target.id}"] button`).click();
+        await page.waitForFunction((master) => state.master === master, target.master);
+        if (width <= 700) await page.locator('#sb-expand').click();
+        await page.locator('#milestone-layer').selectOption('current');
+        assert.ok(await page.locator('.milestone').count() > 0);
+        assert.ok((await page.locator('.milestone-status').allTextContents()).every((text) => text.includes(target.master)));
+        await page.locator('#milestone-layer').selectOption('all');
+      }
+      await page.locator('#real-milestones > details > summary').click();
       await page.locator('#profile-label').fill(`Perfil ${width}`);
       await page.locator('#profile-create').click();
       await page.waitForFunction((label) => document.querySelector('#profile-status').textContent.includes(label), `Perfil ${width}`);
@@ -69,7 +100,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       await page.evaluate(() => map.draw());
       await page.screenshot({ path: path.join(artifacts, `viewport-${width}.png`) });
       assert.deepEqual(errors, []); await page.close();
-      console.log(`PASS ${width}px: verified characters, automatic markers, explicit profile, isolated manual objectives, marker popup, no page errors`);
+      console.log(`PASS ${width}px: verified characters, automatic markers, milestone evidence/filters/layers, explicit profile, manual objectives, no page errors`);
     }
     assert.deepEqual(fs.readFileSync(file), before);
     console.log(`Copy unchanged. Screenshots: ${artifacts}`);

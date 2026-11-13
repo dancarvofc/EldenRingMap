@@ -269,6 +269,7 @@ async function boot() {
     buildCategories();
     buildSavePicker();          // "Level" in the option labels follows the language
     refreshCounts();
+    if (window.Companion) Companion.refreshMilestones();
     if (state.character) renderCharacter(state.character);
     if (state.selected) {
       const m = state.byId.get(state.selected);
@@ -937,6 +938,7 @@ function switchMaster(id) {
   buildLayerButtons();
   initMap(id);
   refreshCounts();
+  if (window.Companion) Companion.refreshMilestones();
   savePrefs();
 }
 

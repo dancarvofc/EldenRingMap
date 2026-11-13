@@ -56,6 +56,24 @@
       <p id="profile-error" role="alert"></p>
     </section>
 
+    <section id="real-milestones" class="panel" hidden aria-label="Marcos de chefes">
+      <details>
+        <summary>Marcos · chefes <span id="milestone-count"></span></summary>
+        <p class="dim">Evidência automática dos marcadores originais. Não avalia quests nem pontos sem retorno.</p>
+        <label for="milestone-search">Buscar chefe</label>
+        <input id="milestone-search" type="search" placeholder="Nome do marcador…">
+        <label for="milestone-status">Estado automático</label>
+        <select id="milestone-status">
+          <option value="all">Todos</option><option value="completed">Derrota registrada</option>
+          <option value="not-recorded">Derrota não registrada</option><option value="unknown">Desconhecido</option>
+        </select>
+        <label for="milestone-layer">Camada</label>
+        <select id="milestone-layer"><option value="all">Todas as camadas</option><option value="current">Camada atual do mapa</option></select>
+        <p id="milestone-filter-count" aria-live="polite"></p>
+        <div id="milestone-list"></div>
+      </details>
+    </section>
+
     <section id="companion" class="panel" hidden aria-label="Companion simulado">
       <strong class="simulation-badge">SIMULAÇÃO · sem dados reais do jogo</strong>
       <h2>Jornada de Millicent</h2>

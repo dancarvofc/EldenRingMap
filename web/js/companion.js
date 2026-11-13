@@ -32,7 +32,9 @@ window.Companion = (() => {
     byId('save-copy-notice').hidden = snapshot.source !== 'save-copy';
     const panel = byId('companion');
     const real = snapshot.source === 'save-copy';
+    panel.setAttribute('aria-label', real ? 'Minha lista por perfil' : 'Companion simulado');
     character = selected;
+    renderMilestones();
     panel.hidden = snapshot.source !== 'mock' && !(real && selected?.profileId);
     document.body.classList.toggle('real-profile-mode', real);
     if (real && selected) renderAssociation(snapshot, selected);
@@ -116,5 +118,49 @@ window.Companion = (() => {
     byId('profile-create').onclick = () => association({ type: 'create', label: byId('profile-label').value });
     byId('profile-bind').onclick = () => association({ type: 'bind', profileId: select.value });
   }
-  return { render, manual };
+  function renderMilestones() {
+    const section = byId('real-milestones');
+    section.hidden = state.source !== 'save-copy';
+    if (section.hidden) return;
+    const milestones = character?.milestones || [];
+    const completed = milestones.filter((item) => item.status === 'completed').length;
+    byId('milestone-count').textContent = `(${completed}/${milestones.length})`;
+    const input = byId('milestone-search'); const status = byId('milestone-status'); const layer = byId('milestone-layer');
+    input.oninput = renderMilestones; status.onchange = renderMilestones; layer.onchange = renderMilestones;
+    const query = input.value.trim().toLocaleLowerCase();
+    const list = byId('milestone-list'); list.replaceChildren();
+    const visible = milestones.filter((item) => {
+      const marker = state.byId.get(item.markerId);
+      return (!query || (marker ? nameOf(marker) : item.markerId).toLocaleLowerCase().includes(query)) &&
+        (status.value === 'all' || item.status === status.value) &&
+        (layer.value === 'all' || marker?.master === state.master);
+    });
+    byId('milestone-filter-count').textContent = `${visible.length} de ${milestones.length} marcadores`;
+    if (!visible.length) list.append(element('p', 'Nenhum marcador corresponde aos filtros.', 'dim'));
+    for (const item of visible) {
+      const marker = state.byId.get(item.markerId);
+      const card = element('article', undefined, `milestone status-${item.status}`);
+      card.dataset.markerId = item.markerId;
+      const title = element('h3', marker ? nameOf(marker) : item.markerId);
+      const statusLabels = { completed: 'Derrota registrada', 'not-recorded': 'Derrota não registrada', unknown: 'Desconhecido' };
+      card.append(title, element('p', `${statusLabels[item.status]} · ${marker?.master || 'Camada desconhecida'}`, 'milestone-status'));
+      const details = element('details'); details.append(element('summary', 'Ver evidências'));
+      details.append(element('p', `${item.source} · ${item.ruleId} · v${item.ruleVersion}`));
+      details.append(element('p', item.flagSource));
+      for (const condition of item.conditions) details.append(element('p', `Flag ${condition.id}: esperado ${condition.expected}; observado ${condition.observed === null ? 'desconhecido' : condition.observed}`));
+      details.append(element('p', item.explanation)); card.append(details);
+      const focus = element('button', 'Ver no mapa'); focus.type = 'button';
+      focus.disabled = !marker || !masterInfo(marker.master) || !Number.isFinite(marker.px) || !Number.isFinite(marker.py);
+      focus.onclick = () => {
+        setFollow(false);
+        if (state.master !== marker.master) switchMaster(marker.master);
+        state.enabled.add(marker.cat); buildCategories();
+        map.flyTo(marker.px, marker.py, 0.9);
+        showPopup(marker);
+        if (matchMedia('(max-width: 700px)').matches) byId('sb-collapse').click();
+      };
+      card.append(focus); list.append(card);
+    }
+  }
+  return { render, manual, refreshMilestones: renderMilestones };
 })();
