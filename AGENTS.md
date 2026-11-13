@@ -1,6 +1,6 @@
 # AGENTS.md — Instruções permanentes ao Codex
 
-Este repositório será evoluído para o **Elden Ring Live Companion**. Antes de trabalhar, leia `PROJECT.md`, `docs/STATUS-AND-ROADMAP.md` e a tarefa ativa (`TASK-011.md`; auditoria anterior em `docs/tasks/TASK-001.md`). Não trate uma tarefa isolada como definição integral de produto.
+Este repositório será evoluído para o **Elden Ring Live Companion**. Antes de trabalhar, leia `PROJECT.md`, `docs/STATUS-AND-ROADMAP.md` e a tarefa ativa (`TASK-012.md`; auditoria anterior em `docs/tasks/TASK-001.md`). Não trate uma tarefa isolada como definição integral de produto.
 
 ## Princípios
 
@@ -14,6 +14,7 @@ Este repositório será evoluído para o **Elden Ring Live Companion**. Antes de
 8. Respeitar licenças e assets: não copiar bases de terceiros sem autorização; não commitar saves, tiles, imagens ou dados extraídos de instalação de jogo.
 9. Trabalhar em pequenas alterações, testes antes/depois, verificar `git diff` e `git status`. Não alterar código fora do escopo sem justificar.
 10. Falar português no relatório e na comunicação. Identificadores de código em inglês quando coerente com o repositório.
+11. Servidor deve ser iniciado sob demanda e encerrado quando o usuário terminar; não instalar autostart/serviço persistente sem pedido explícito.
 
 ## Fontes e prioridade
 
@@ -52,7 +53,7 @@ Guias em jogo, overlay, IA, plugin Decky, APK, sincronização de nuvem, catálo
 Manter o código e as evoluções no fork dancarvofc/EldenRingMap.
 Branches, PRs e merges para main são permitidos no nosso fork.
 Não enviar PRs, commits ou merges ao repositório original egormagurin/EldenRingMap.
-A tarefa ativa é TASK-011.md. TASK-002.md registra a primeira entrega.
+A próxima tarefa planejada é TASK-012.md. TASK-002.md registra a primeira entrega.
 
 Reforço do usuário: reutilizar marcadores, extratores e recursos do projeto original;
 não reconstruir mapa ou catálogo do zero.

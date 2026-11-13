@@ -5,6 +5,10 @@ Status: M0 auditado; TASK-002 a TASK-011 implementadas no fork. Referência: 13/
 O estado consolidado, funcionalidades entregues e backlog atualizado estão em
 [docs/STATUS-AND-ROADMAP.md](docs/STATUS-AND-ROADMAP.md).
 
+Operação desejada: iniciar o servidor somente durante o uso e encerrá-lo ao
+terminar. Não manter processo em segundo plano nem autostart; Decky deverá
+oferecer iniciar/parar e indicar o estado do serviço.
+
 ## 1. O que vamos construir
 
 Evoluir o [EldenRingMap Live Map](https://github.com/egormagurin/EldenRingMap) para um companion inteligente e leve, que acompanhe a jornada de cada personagem de **Elden Ring (jogo base e Shadow of the Erdtree)**. O usuário joga no Steam Deck LCD com SteamOS/Proton e consulta, preferencialmente pelo navegador Android na mesma LAN, um mapa e uma lista de objetivos que se atualizam conforme o save. O sistema não altera o jogo nem o save.

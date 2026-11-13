@@ -3,9 +3,9 @@
 **Atualizado em:** 13/11/2026  
 **Repositório de trabalho:** `dancarvofc/EldenRingMap`  
 **Branch:** `main` do nosso fork  
-**Estado:** entregas TASK-002 a TASK-011 implementadas; próxima fase é transformar referências e marcos em acompanhamento real mais completo, e preparar uso no celular/Steam Deck.
+**Estado:** entregas TASK-002 a TASK-011 implementadas; TASK-012 está planejada para destacar os marcadores. Em seguida, evoluir regras reais e preparar uso no celular/Steam Deck.
 
-Este documento é o guia consolidado de continuidade. As tarefas `TASK-002.md` a `TASK-011.md` e `docs/tasks/TASK-001.md` guardam o histórico e as evidências detalhadas de cada rodada.
+Este documento é o guia consolidado de continuidade. As tarefas `TASK-002.md` a `TASK-011.md`, a próxima tarefa `TASK-012.md` e `docs/tasks/TASK-001.md` guardam o histórico, escopo e evidências.
 
 ## Visão do produto
 
@@ -28,6 +28,7 @@ O programa é passivo: não altera o jogo nem os saves. O idioma de exibição d
 - Objetivos de “Minha Lista” podem apontar para um marcador e voltar ao mapa, sem alterar o estado automático.
 - Categorias do painel lateral agora aparecem em grupos (Locations, Structures, Key Items, Items, Equipment, NPCs, Enemies, Materials e Other). POIs nomeados são separados por tipos de estrutura, incluindo cabanas, fortes, cavernas, castelos, igrejas, ruínas e torres; nomes sem indicação inequívoca permanecem genéricos.
 - As 13 Cruzes de Miquella encontradas na extração local têm categoria própria. Pickups DLC reconhecem 38 Fragmentos de Scadutree e 18 Cinzas do Espírito Reverenciado; os nomes de categoria entram na busca EN/PT.
+- O servidor é para uso sob demanda: iniciar quando for consultar o companion e encerrar ao terminar. Não deve ficar rodando continuamente nem iniciar automaticamente em segundo plano. Decky deve ter controles explícitos de iniciar/parar e indicar o estado.
 - Correção de cancelamento de animação de câmera para que um voo antigo não sobrescreva Fit, zoom, arrasto ou nova navegação.
 
 ### Leitura passiva e dados auditáveis
@@ -86,6 +87,7 @@ Itens abaixo são backlog ordenado por dependência e segurança. A ordem pode m
 
 ### 5. Expandir exploração, NPCs e acabamento
 
+- Implementar o controle “Destacar marcadores” com contorno vermelho, descrito em [TASK-012](../TASK-012.md). Persistir a preferência e preservar ícones, filtros e estado de progresso.
 - Verificar cobertura real das quatro camadas, sobretudo M11 (subterrâneo da DLC), e identificar lacunas nos marcadores originais antes de completar dados.
 - Avaliar catálogo de pickups e itens que não são representados por uma flag persistente confiável; manter desconhecido quando a origem não prova posse.
 - Ampliar referências de NPCs e nomes/aliases EN/PT por extração reproduzível, com validação de casos ambíguos e sem commit de conteúdo extraído.
@@ -99,13 +101,37 @@ Itens abaixo são backlog ordenado por dependência e segurança. A ordem pode m
 - Revisar licenças de código e dados antes de redistribuir qualquer componente. Referências de estudo não autorizam automaticamente cópia.
 - Atualizar este documento e a tarefa ativa quando uma entrega mudar o status do backlog.
 
+### Operação do servidor
+
+- Iniciar apenas ao usar a aplicação e encerrar o processo quando terminar.
+- Não instalar autostart nem serviço persistente que consuma recursos quando o companion estiver ocioso.
+- A integração Decky deve iniciar/parar o servidor, exibir status e endereço; fechar a interface do celular, por si só, não garante que o servidor pare.
+
 ## Sequência sugerida das próximas entregas
 
-1. **TASK-012 — primeira quest real auditável:** escolher um fluxo pequeno (sugestão: Millicent), mapear condições com fontes permitidas, definir regras conservadoras e testar snapshots reais/cópias sem escrita. Se não houver evidência suficiente, documentar a lacuna em vez de inferir.
-2. **TASK-013 — presença de NPC:** classificar referências de Millicent por variante e condição; só indicar posição provável quando as flags sustentarem a regra. Manter referência estática separada.
-3. **TASK-014 — operação LAN passiva:** definir ameaça e proteção, habilitar acesso Android de forma restrita e verificar no dispositivo físico.
-4. **TASK-015 — implantação Decky:** controlar serviço passivo, estado e endereço e validar ciclo de vida no Steam Deck.
-5. **Depois:** expandir catálogo, avisos de irreversibilidade, cobertura de itens e polimento conforme uso.
+1. **TASK-012 — visibilidade:** botão para contorno vermelho nos marcadores, preferência persistente, contraste e validação mobile.
+2. **TASK-013 — primeira quest real auditável:** escolher um fluxo pequeno (sugestão: Millicent), mapear condições com fontes permitidas, definir regras conservadoras e testar snapshots reais/cópias sem escrita. Se não houver evidência suficiente, documentar a lacuna em vez de inferir.
+3. **TASK-014 — presença de NPC:** classificar referências de Millicent por variante e condição; só indicar posição provável quando as flags sustentarem a regra. Manter referência estática separada.
+4. **TASK-015 — operação LAN passiva:** definir ameaça e proteção, habilitar acesso Android de forma restrita e verificar no dispositivo físico.
+5. **TASK-016 — implantação Decky:** controlar servidor sob demanda, estado e endereço e validar ciclo de vida no Steam Deck.
+6. **Depois:** expandir catálogo, avisos de irreversibilidade, cobertura de itens e polimento conforme uso.
+
+## Estimativa de conclusão
+
+Estimativa de trabalho ativo, em horas de desenvolvimento; não é tempo corrido. Assume uma pessoa trabalhando com o código atual, reaproveitando o upstream, sem reescrita e usando testes/cópias locais.
+
+| Marco | Escopo resumido | Estimativa |
+|---|---|---:|
+| M1 — Visibilidade | Contorno vermelho com botão, preferência persistente, contraste/viewport | 2–4 h |
+| M2 — Primeira quest e NPC reais | Regras auditáveis para um fluxo (Millicent candidata), variantes e status desconhecido | 12–24 h |
+| M3 — Perfis confiáveis | Investigar identidade, recuperação/backup e proteger isolamento manual | 6–12 h |
+| M4 — Celular na LAN | Acesso restrito, segurança dos endpoints, reconexão e teste Android físico | 8–16 h |
+| M5 — Steam Deck e Decky | Servidor sob demanda, iniciar/parar/status/endereço e teste no Deck | 12–24 h |
+| M6 — Acabamento da primeira versão | Camadas, acessibilidade, desempenho, regressões e validação nos dispositivos | 8–16 h |
+
+**Primeira versão utilizável:** aproximadamente **48–96 horas** (cerca de 3–7 semanas a 15 horas por semana), incluindo o primeiro fluxo real de quest/NPC, celular e Decky.
+
+Ampliar o catálogo de quests, NPCs, consequências irreversíveis e cobertura base+DLC é uma fase adicional, estimada preliminarmente em **40–100 horas ou mais**, pois cada fluxo exige validação independente. Para essa versão mais ampla, a estimativa total passa a **88–196+ horas** (aproximadamente 6–13+ semanas a 15 horas por semana). Pesquisa de condições, testes no Android/Deck e correções podem aumentar os intervalos. APK, overlay em jogo, IA e sincronização de nuvem não estão incluídos.
 
 ## Decisões que não devem ser perdidas
 
@@ -130,17 +156,20 @@ npm run start:preview
 # Inspeção local de uma CÓPIA explícita do save (somente leitura)
 node server/index.js --save-copy '/caminho/para/COPIA.sl2' --port 8100
 
+# Encerrar o servidor: Ctrl+C no terminal onde ele está rodando
+
 # Suítes automatizadas
 npm test
 npm run test:extractors
 ```
 
-Os modos mock e inspeção de cópia são locais. A integração LAN e Decky ainda não está pronta. Para extração local, veja [LOCAL-MAP.md](LOCAL-MAP.md); para inspeção passiva, [SAVE-COPY.md](SAVE-COPY.md); para mock, [MOCK-MODE.md](MOCK-MODE.md).
+Inicie esses comandos apenas durante o uso e encerre com Ctrl+C ao terminar. Os modos mock e inspeção de cópia são locais. A integração LAN e Decky ainda não está pronta. Para extração local, veja [LOCAL-MAP.md](LOCAL-MAP.md); para inspeção passiva, [SAVE-COPY.md](SAVE-COPY.md); para mock, [MOCK-MODE.md](MOCK-MODE.md).
 
 ## Critérios para considerar o projeto pronto para o uso pretendido
 
 - A página abre no celular pela LAN do Steam Deck e reconecta após suspensão/reinício sem expor o serviço à internet.
 - Decky inicia, para e reporta corretamente o servidor passivo e seu endereço.
+- O servidor não fica ativo nem inicia automaticamente quando o companion não está em uso.
 - Dados automáticos têm evidências auditáveis; regras de quest/NPC não inventam estado a partir de ausência de flags.
 - Perfis e marcações manuais permanecem isolados e recuperáveis.
 - Mapa original, marcadores e quatro camadas estão utilizáveis; limitações de cobertura são explícitas.

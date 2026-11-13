@@ -29,7 +29,7 @@ do jogo são extraídos.
 
 Leia [modo mock](docs/MOCK-MODE.md), [visão do produto](PROJECT.md),
 [estado consolidado e roteiro](docs/STATUS-AND-ROADMAP.md) e
-[tarefa detalhada mais recente](TASK-011.md). O alvo é web no Steam Deck,
+[próxima tarefa planejada](TASK-012.md). O alvo é web no Steam Deck,
 navegador no celular e inicialização controlada por Decky em uma etapa posterior.
 
 Nenhum save pessoal ou asset extraído do jogo acompanha as mudanças deste fork.
