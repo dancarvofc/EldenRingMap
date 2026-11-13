@@ -32,6 +32,7 @@ function parseArgs(argv) {
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--mock') out.mock = true;
+    else if (a === '--manual-state') out.manualState = argv[++i];
     else if (a === '--port') out.port = Number(argv[++i]);
     else if (a === '--save') out.save = argv[++i];
     else if (a === '--poll') out.poll = Number(argv[++i]);
@@ -293,7 +294,7 @@ function buildSnapshot(reader, savePath) {
     const found = c.ok ? computeFound(c) : [];
     return {
       ...(parsed.source === 'mock' ? { profileId: c.profileId, source: c.source,
-        integrity: c.integrity, snapshotId: c.snapshotId, quests: c.quests } : {}),
+        integrity: c.integrity, snapshotId: c.snapshotId, quests: c.quests, manual: c.manual } : {}),
       slot: c.slot,
       name: c.name,
       level: c.level,
@@ -417,6 +418,7 @@ function main() {
   const args = parseArgs(process.argv);
   if (args.help) {
     console.log('usage: node server/index.js [options]');
+    console.log('  --manual-state <path>  mock manual-state JSON (default cache/mock-manual-state.json)');
     console.log('  --mock          fictional profiles and quests; never opens a save');
     console.log('  --port <n>      listen port (default 8099)');
     console.log('  --save <path>   ER0000.sl2 to watch (default: auto-detect)');
@@ -449,7 +451,7 @@ function main() {
     console.warn('warning: data/markers.json is empty - run `python tools/build_markers.py`');
   }
 
-  let reader = args.mock ? new MockProvider() : new SaveReader(savePath, bst);
+  let reader = args.mock ? new MockProvider(args.manualState || path.join(ROOT, 'cache', 'mock-manual-state.json')) : new SaveReader(savePath, bst);
   try {
     current = buildSnapshot(reader, savePath);
   } catch (err) {
@@ -532,6 +534,21 @@ function main() {
       });
       return;
     }
+    if (p === '/api/manual' && args.mock && req.method === 'POST') {
+      let body = '';
+      req.on('data', (chunk) => { body += chunk; if (body.length > 4096) req.destroy(); });
+      req.on('end', () => {
+        try {
+          const { profileId, ...action } = JSON.parse(body);
+          const manual = reader.manual.update(profileId, action);
+          current = buildSnapshot(reader, savePath);
+          current.activeSlot = activeSlot;
+          broadcast('state', { ...current, newlyFound: [] });
+          json(res, { ok: true, manual });
+        } catch (error) { json(res, { error: error.message }, 400); }
+      });
+      return;
+    }
     if (p === '/api/state') return json(res, current);
     if (p === '/api/markers') return json(res, MARKER_DOC);
 
@@ -578,7 +595,7 @@ data: ${JSON.stringify(live.pos)}
     }
 
     if (p === '/api/check' && req.method === 'POST') {
-      if (args.mock) return json(res, { error: 'Mock manual persistence is planned for delivery 2' }, 409);
+      if (args.mock) return json(res, { error: 'Use /api/manual with an explicit profileId in mock mode' }, 409);
       let body = '';
       req.on('data', (d) => { body += d; if (body.length > 1e6) req.destroy(); });
       req.on('end', () => {

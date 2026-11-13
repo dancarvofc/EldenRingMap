@@ -4,10 +4,15 @@ const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
 
+const fs = require('node:fs');
+const os = require('node:os');
 const root = path.join(__dirname, '..');
-async function launch(t) {
-  const child = spawn(process.execPath, ['server/index.js', '--mock', '--port', '0'],
+async function launch(t, manualFile, onChild = () => {}) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'elden-http-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const child = spawn(process.execPath, ['server/index.js', '--mock', '--port', '0', '--manual-state', manualFile || path.join(dir, 'state.json')],
     { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
+  onChild(child);
   t.after(async () => {
     if (child.exitCode !== null || child.signalCode !== null) return;
     const stopped = new Promise((resolve) => child.once('exit', resolve));
@@ -75,6 +80,14 @@ test('HTTP and SSE share mock state, isolate characters and recover on reconnect
   assert.equal((await post('/api/saves', { path: '/etc/passwd', slot: 0 })).status, 400);
   assert.equal((await post('/api/check', { id: 'anything', on: true })).status, 409);
   assert.equal((await post('/api/mock/snapshot', { ...selection, snapshotId: 'bad' })).status, 400);
+  const manual = { profileId: 'mock:jinx', type: 'check', id: 'mock.millicent.meet', on: true };
+  assert.equal((await post('/api/manual', manual, { Origin: 'http://evil.example' })).status, 403);
+  assert.equal((await post('/api/manual', manual)).status, 200);
+  const updated = await next();
+  assert.equal(updated.characters[0].manual.checked['mock.millicent.meet'], true);
+  assert.deepEqual(updated.characters[1].manual, { checked: {}, custom: [] });
+  assert.equal(updated.characters[0].quests[0].steps[0].status, 'available');
+  assert.equal((await post('/api/manual', { ...manual, profileId: 'other' })).status, 400);
   assert.equal((await fetch(base + '/api/saves')).status, 200);
   assert.equal((await fetch(base + '/')).status, 200);
 });
@@ -85,4 +98,25 @@ test('mock refuses real saves, memory reading and LAN', { timeout: 10000 }, asyn
     const code = await new Promise((resolve) => child.once('exit', resolve));
     assert.equal(code, 1);
   }
+});
+
+test('manual progress survives a server process restart', { timeout: 10000 }, async (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'elden-restart-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'manual.json');
+  let child;
+  const first = await launch(t, file, (process) => { child = process; });
+  const response = await fetch(first + '/api/manual', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ profileId: 'mock:jinx', type: 'create', title: 'Keep after restart' }),
+  });
+  assert.equal(response.status, 200);
+  const saved = (await response.json()).manual;
+  const stopped = new Promise((resolve) => child.once('exit', resolve));
+  child.kill();
+  await stopped;
+  const second = await launch(t, file);
+  const state = await (await fetch(second + '/api/state')).json();
+  assert.deepEqual(state.characters[0].manual, saved);
+  assert.deepEqual(state.characters[1].manual, { checked: {}, custom: [] });
 });

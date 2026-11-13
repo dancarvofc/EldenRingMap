@@ -1,9 +1,11 @@
 'use strict';
+const { ManualState } = require('./manualState');
 const fixture = require('../../fixtures/mock/millicent.json');
 const { evaluateMillicent } = require('./questRules');
 
 class MockProvider {
-  constructor() {
+  constructor(manualFile) {
+    this.manual = manualFile ? new ManualState(manualFile, fixture.profiles.map((p) => p.profileId)) : null;
     this.selected = new Map(fixture.profiles.map((p) => [p.profileId, 'not-started']));
     this.revision = 0;
   }
@@ -24,6 +26,7 @@ class MockProvider {
         const snapshot = { source: 'mock', integrity: 'valid',
           getFlag: (id) => Object.hasOwn(flags, id) ? flags[id] : null };
         return { ...profile, source: 'mock', integrity: 'valid', snapshotId,
+          manual: this.manual ? this.manual.read(profile.profileId) : { checked: {}, custom: [] },
           ok: true, secondsPlayed: 0, quests: [evaluateMillicent(snapshot)] };
       }),
     };

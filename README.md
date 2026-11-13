@@ -3,8 +3,8 @@
 Fork de [egormagurin/EldenRingMap](https://github.com/egormagurin/EldenRingMap),
 preservando o servidor Node.js, SSE e mapa canvas existentes.
 
-**Entrega 1:** servidor mock com dois perfis, três snapshots fictícios de Millicent,
-regras auditáveis e testes automatizados. A interface de quests ainda está pendente.
+**Entregas 1 e 2:** servidor mock com dois perfis, três snapshots fictícios de Millicent,
+regras auditáveis, persistência manual isolada por perfil e testes automatizados. A interface de quests ainda está pendente.
 
 ```sh
 npm run start:mock
@@ -12,7 +12,7 @@ npm test
 ```
 
 Leia [modo mock](docs/MOCK-MODE.md), [visão do produto](PROJECT.md) e
-[tarefa atual e próximos passos](TASK-002.md). Alvo: web no Steam Deck, navegador
+[tarefa atual e próximos passos](TASK-003.md). Alvo: web no Steam Deck, navegador
 no celular e inicialização controlada por Decky em uma etapa posterior.
 
 Nenhum save pessoal ou asset extraído do jogo acompanha as mudanças deste fork.
