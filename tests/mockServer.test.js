@@ -84,6 +84,7 @@ test('HTTP and SSE share mock state, isolate characters and recover on reconnect
   assert.equal((await post('/api/mock/snapshot', { ...selection, snapshotId: 'bad' })).status, 400);
   const manual = { profileId: 'mock:jinx', type: 'check', id: 'mock.millicent.meet', on: true };
   assert.equal((await post('/api/manual', manual, { Origin: 'http://evil.example' })).status, 403);
+  assert.equal((await post('/api/manual', { profileId: 'mock:jinx', type: 'create', title: 'Unknown location', markerId: 'missing:marker' })).status, 400);
   assert.equal((await post('/api/manual', manual)).status, 200);
   const updated = await next();
   assert.equal(updated.characters[0].manual.checked['mock.millicent.meet'], true);

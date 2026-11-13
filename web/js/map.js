@@ -58,6 +58,9 @@ class TileMap {
 
   /** Drop the size observer; the canvas is about to be replaced. */
   destroy() {
+    this.cancelFlight();
+    if (this._raf) cancelAnimationFrame(this._raf);
+    this._raf = null;
     if (this._ro) { this._ro.disconnect(); this._ro = null; }
   }
 
@@ -75,6 +78,7 @@ class TileMap {
   }
 
   fit() {
+    this.cancelFlight();
     const r = this.canvas.getBoundingClientRect();
     this.scale = Math.min(r.width / this.width, r.height / this.height) * 0.98;
     this.cx = this.width / 2;
@@ -83,6 +87,7 @@ class TileMap {
   }
 
   zoomBy(factor, anchorX, anchorY) {
+    this.cancelFlight();
     const r = this.canvas.getBoundingClientRect();
     const ax = anchorX ?? r.width / 2;
     const ay = anchorY ?? r.height / 2;
@@ -98,6 +103,7 @@ class TileMap {
   }
 
   centerOn(px, py, scale) {
+    this.cancelFlight();
     this.cx = px; this.cy = py;
     if (scale) this.scale = Math.max(this.minScale, Math.min(this.maxScale, scale));
     this.clamp();
@@ -105,7 +111,13 @@ class TileMap {
   }
 
   /** Ease the camera to a point; used by search results. */
+  cancelFlight() {
+    if (this._flyFrame) cancelAnimationFrame(this._flyFrame);
+    this._flyFrame = null;
+  }
+
   flyTo(px, py, scale, ms = 420) {
+    this.cancelFlight();
     const t0 = performance.now();
     const sx = this.cx, sy = this.cy, ss = this.scale;
     const ts = scale ? Math.max(this.minScale, Math.min(this.maxScale, scale)) : ss;
@@ -117,9 +129,9 @@ class TileMap {
       this.scale = ss + (ts - ss) * e;
       this.clamp();
       this.draw();
-      if (k < 1) requestAnimationFrame(step);
+      this._flyFrame = k < 1 ? requestAnimationFrame(step) : null;
     };
-    requestAnimationFrame(step);
+    this._flyFrame = requestAnimationFrame(step);
   }
 
   clamp() {
@@ -233,6 +245,7 @@ class TileMap {
     let dragging = false, lastX = 0, lastY = 0, moved = 0;
 
     c.addEventListener('pointerdown', (e) => {
+      this.cancelFlight();
       dragging = true; moved = 0;
       lastX = e.clientX; lastY = e.clientY;
       c.setPointerCapture(e.pointerId);

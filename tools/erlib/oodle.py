@@ -28,11 +28,22 @@ def load(game_dir: str | None = None):
         if not native:
             raise RuntimeError(
                 "native Oodle shim not configured; run setup-linux.sh")
+        native = os.path.abspath(native)
+        runtime = os.environ.get('ER_OODLE_RUNTIME') or os.path.join(os.path.dirname(os.path.dirname(native)), 'runtime')
+        previous = os.getcwd()
+        if not os.path.isfile(os.path.join(runtime, 'oo2core_8_win64.dll')):
+            if os.path.isfile('oo2core_8_win64.dll'):
+                runtime = previous
+            else:
+                raise RuntimeError('Oodle runtime DLL missing; run setup-linux.sh --map-only')
         try:
+            # linoodle loads its PE dependency during CDLL initialization.
+            os.chdir(runtime)
             _handle = ctypes.CDLL(native)
         except OSError as exc:
-            raise RuntimeError(
-                f"could not load native Oodle shim {native}: {exc}") from exc
+            raise RuntimeError(f"could not load native Oodle shim {native}: {exc}") from exc
+        finally:
+            os.chdir(previous)
     else:
         candidates: list[str] = []
         if game_dir:

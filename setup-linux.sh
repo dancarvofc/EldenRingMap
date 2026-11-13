@@ -193,15 +193,20 @@ export ER_MOD_DIR="$MOD_DIR"
 export ER_LINOODLE="$LIB"
 cd "$NATIVE_DIR/runtime"
 
-printf '\n[1/7] Extracting base map tiles...\n'
-"$PYTHON" "$ROOT/tools/extract_tiles.py" --game-dir "$GAME_DIR"
+if [[ "${1:-}" != "--labels-only" ]]; then
+    printf '\n[1/7] Extracting base map tiles...\n'
+    "$PYTHON" "$ROOT/tools/extract_tiles.py" --game-dir "$GAME_DIR"
+fi
 printf '\n[2/7] Building marker data...\n'
 "$PYTHON" "$ROOT/tools/build_markers.py" "$GAME_DIR"
 # Minimal local preview: no item scan, wiki fetch, save access or server startup.
-if [[ "${1:-}" == "--map-only" ]]; then
-    printf '\nExtracting map icons for the local preview...\n'
-    "$PYTHON" "$ROOT/tools/extract_icons.py" --game-dir "$GAME_DIR" --mod-dir "$MOD_DIR"
-    printf '\nLocal map ready. Run npm run start:preview (no save required).\n'
+if [[ "${1:-}" == "--map-only" || "${1:-}" == "--labels-only" ]]; then
+    if [[ "${1:-}" == "--map-only" ]]; then
+        printf '\nExtracting map icons for the local preview...\n'
+        "$PYTHON" "$ROOT/tools/extract_icons.py" --game-dir "$GAME_DIR" --mod-dir "$MOD_DIR"
+    fi
+    "$PYTHON" "$ROOT/tools/extract_npc_references.py" --game-dir "$GAME_DIR" --mod-dir "$MOD_DIR"
+    printf '\nLocal map data ready. Run npm run start:preview (no save required).\n'
     exit 0
 fi
 printf '\n[3/7] Indexing map files...\n'
@@ -210,6 +215,7 @@ printf '\n[4/7] Extracting item locations...\n'
 "$PYTHON" "$ROOT/tools/extract_items.py" --game-dir "$GAME_DIR" --mod-dir "$MOD_DIR"
 printf '\n[5/7] Extracting map icons...\n'
 "$PYTHON" "$ROOT/tools/extract_icons.py" --game-dir "$GAME_DIR" --mod-dir "$MOD_DIR"
+"$PYTHON" "$ROOT/tools/extract_npc_references.py" --game-dir "$GAME_DIR" --mod-dir "$MOD_DIR"
 # Rune and Ember Pieces are Reforged collectibles - an unmodded game has none,
 # so this only runs with a mod directory set.
 if [[ -n "$MOD_DIR" ]]; then

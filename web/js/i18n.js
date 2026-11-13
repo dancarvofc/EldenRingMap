@@ -25,7 +25,7 @@ const STRINGS = {
     'live.title': 'connection to the local server',
 
     'progress.overall': 'Overall',
-    'search.placeholder': 'Search markers…',
+    'search.placeholder': 'Search in English or Portuguese…',
     'search.none': 'no matches',
 
     'panel.map': 'Map',
@@ -42,6 +42,7 @@ const STRINGS = {
     'opt.showLabels': 'Show labels when zoomed',
     'opt.showIcons': "Use the game's map icons",
 
+    'cat.npc': 'NPC reference locations',
     'cat.grace': 'Sites of Grace',
     'cat.boss': 'Bosses',
     'cat.poi': 'Points of interest',

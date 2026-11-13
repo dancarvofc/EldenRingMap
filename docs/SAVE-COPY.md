@@ -119,3 +119,14 @@ marcadores usando o extrator atualizado (`./setup-linux.sh --map-only` também
 refaz essa etapa). O campo flagSource fica apenas nos dados gerados locais.
 O botão **Ver no mapa** mantém os marcadores e a área do fragmento desenhados
 pelo canvas original. Nomes derivados e cobertura mantêm as limitações do upstream.
+
+## Atualização dos nomes e referências
+
+A rodada TASK-010 distingue 24 fragmentos ligados a itens com nome oficial das
+10 outras áreas de mapa sem item identificado. Essas áreas continuam no mapa
+em **Regions**, sem serem anunciadas como itens coletáveis. Os IDs e posições
+originais são preservados. Exploração contém graças e fragmentos identificados.
+
+Nomes exibidos são ingleses, mas a busca aceita português sem acentos. Consulte
+[busca e NPCs](SEARCH-NPCS.md) para `thief`/`ladrão`, Millicent e objetivos ligados
+a marcadores. NPCs são referências estáticas, nunca inferências de progresso.

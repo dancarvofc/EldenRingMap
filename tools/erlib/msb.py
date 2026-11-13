@@ -112,3 +112,27 @@ class MSB:
 
 def load(msb_bytes):
     return MSB(msb_bytes)
+
+
+def enemy_placement(msb, offset):
+    """Read a normal Enemy placement, not a dummy or an inferred active spawn.
+
+    MSBE field layout cross-checked with SoulsFormatsNEXT MSBE/PartsParam.cs:
+    base position +0x20, entity-data pointer +0x60, type-data pointer +0x68;
+    NPCParamID +0x0c and TalkID +0x10 inside Enemy type data.
+    """
+    import math
+    try:
+        if offset < 0 or offset + 0x70 > len(msb.data) or msb.i32(offset + 0x0c) != 2:
+            return None
+        typed = offset + msb.i64(offset + 0x68)
+        entity = offset + msb.i64(offset + 0x60)
+        if typed < offset + 0x70 or typed + 0x14 > len(msb.data) or entity < offset + 0x70 or entity + 4 > len(msb.data):
+            return None
+        position = msb.vec3(offset + 0x20)
+        if not all(math.isfinite(value) for value in position):
+            return None
+        return {"npcParamId": msb.i32(typed + 0x0c), "talkId": msb.i32(typed + 0x10),
+                "entityId": msb.u32(entity), "position": position}
+    except (struct.error, IndexError):
+        return None

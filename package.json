@@ -14,7 +14,8 @@
     "check-live": "python tools/live_memory.py --probe",
     "test": "node --test",
     "start:mock": "node server/index.js --mock",
-    "start:preview": "node server/index.js --mock --mock-map local"
+    "start:preview": "node server/index.js --mock --mock-map local",
+    "test:extractors": "python3 -m unittest discover -s tests -p 'test_*.py'"
   },
   "engines": {
     "node": ">=18"

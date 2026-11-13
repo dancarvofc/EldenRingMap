@@ -16,6 +16,7 @@
 const CATS = {
   grace:     { color: '#ffd766', r: 6 },
   boss:      { color: '#e05a5a', r: 6 },
+  npc:       { color: '#eebdff', r: 7 },
   poi:       { color: '#6fb7e8', r: 5 },
   region:    { color: '#9aa0a8', r: 5 },
   fragment:  { color: '#c58bea', r: 5 },
@@ -89,7 +90,7 @@ const FOUND_COLOR = '#6fcf7a';
 
 const $ = (id) => document.getElementById(id);
 const t = (k) => I18n.t(k);
-const nameOf = (m) => I18n.name(m);
+const nameOf = (m) => MarkerSearch.displayName(m);
 const catLabel = (k) => t('cat.' + k);
 
 const state = {
@@ -431,10 +432,10 @@ function drawMarkers(ctx, m) {
       // can land twice in one spot. Draw each name once per neighbourhood.
       const drawn = [];
       for (const mk of list) {
-        if (mk.cat !== 'grace' && mk.cat !== 'boss') continue;
+        if (mk.cat !== 'grace' && mk.cat !== 'boss' && mk.cat !== 'npc') continue;
         const [sx, sy] = m.toScreen(mk.px, mk.py);
         if (sx < 0 || sy < 0 || sx > r.width || sy > r.height) continue;
-        const label = nameOf(mk);
+        const label = nameOf(mk) + (mk.reference ? ' · reference' : '');
         if (drawn.some((d) => d.name === label &&
                        Math.abs(d.x - sx) < 90 && Math.abs(d.y - sy) < 60)) continue;
         drawn.push({ name: label, x: sx, y: sy });
@@ -466,7 +467,7 @@ function drawMarkers(ctx, m) {
 /** A selected map fragment shows the region it reveals. */
 function drawFragmentRect(ctx, m) {
   const mk = state.selected && state.byId.get(state.selected);
-  if (!mk || mk.cat !== 'fragment' || !mk.rect || mk.master !== state.master) return;
+  if (!mk || !['fragment', 'region'].includes(mk.cat) || !mk.rect || mk.master !== state.master) return;
   const [x0, y0] = m.toScreen(mk.rect[0], mk.rect[1]);
   const [x1, y1] = m.toScreen(mk.rect[2], mk.rect[3]);
   ctx.save();
@@ -855,13 +856,21 @@ function showPopup(m) {
     <h3>${escapeHtml(nameOf(m))}</h3>
     <div class="meta">${catLabel(m.cat)}${m.map ? ' · ' + m.map : ''}${m.flag ? ' · ' + m.flag : ''}</div>
     <div class="found-state ${found ? 'found-yes' : ''}">
-      ${found ? (auto ? t('popup.foundSave') : t('popup.foundManual')) : t('popup.notFound')}
+      ${m.reference ? 'Reference location · current NPC position unknown' : found ? (auto ? t('popup.foundSave') : t('popup.foundManual')) : t('popup.notFound')}
     </div>
+    ${m.reference ? `<div class="detail npc-reference"><b>Static NPC reference</b><p>${escapeHtml(m.reference.explanation)}</p><p>Near: ${escapeHtml(m.reference.locationNames.en || m.map)}</p><p>Map ${escapeHtml(m.map)} · entity ${m.reference.entityId} · NPC param ${m.reference.npcParamId} · name ID ${m.reference.npcNameId}</p><p>${escapeHtml(m.reference.nameSource || 'NpcParam.nameId')}${m.reference.instructionIndex != null ? ` · instruction ${m.reference.instructionIndex}` : ''}</p></div>` : ''}
     ${heightBlock(m)}
     ${routeBlock(m)}
-    ${auto || (state.source === 'save-copy' && !state.character?.profileId) ? '' : `<button class="toggle">${found ? t('popup.unmark') : t('popup.mark')}</button>`}
+    ${state.source === 'save-copy' && state.character?.profileId ? `<button class="pin-list" ${state.character.manual.custom.some((item) => item.markerId === m.id) ? 'disabled' : ''}>${state.character.manual.custom.some((item) => item.markerId === m.id) ? 'In My List' : 'Add to My List'}</button>` : ''}
+    ${auto || m.cat === 'npc' || (state.source === 'save-copy' && !state.character?.profileId) ? '' : `<button class="toggle">${found ? t('popup.unmark') : t('popup.mark')}</button>`}
   `;
   fillRoute(el, m);
+  const pin = el.querySelector('.pin-list');
+  if (pin) pin.onclick = async () => {
+    pin.disabled = true;
+    const title = nameOf(m) + (m.reference ? ` · near ${m.reference.locationNames.en || m.map}` : '');
+    if (!await Companion.manual({ type: 'create', title, markerId: m.id })) pin.disabled = false;
+  };
   const [x, y] = map.toScreen(m.px, m.py);
   el.style.left = x + 'px';
   el.style.top = y + 'px';
@@ -878,6 +887,11 @@ function showPopup(m) {
   if (limit > half + EDGE_PAD) {
     el.style.left = Math.min(Math.max(x, half + EDGE_PAD), limit) + 'px';
   }
+  const stageBounds = el.parentElement.getBoundingClientRect();
+  const popupBounds = el.getBoundingClientRect();
+  const top = Math.max(stageBounds.top + EDGE_PAD,
+    Math.min(popupBounds.top, stageBounds.bottom - EDGE_PAD - popupBounds.height));
+  el.style.top = (parseFloat(el.style.top) + top - popupBounds.top) + 'px';
   el.querySelector('.close').onclick = closePopup;
   // NOT `const t` - that would shadow the translate helper used in the template
   // above and put it in the temporal dead zone for the whole function.
@@ -929,6 +943,22 @@ function buildLayerButtons() {
     b.onclick = () => switchMaster(id);
     wrap.appendChild(b);
   }
+}
+
+let markerFocusTimer = null;
+function focusMarker(marker) {
+  if (!marker || !masterInfo(marker.master)) return;
+  clearTimeout(markerFocusTimer);
+  setFollow(false);
+  if (marker.master !== state.master) switchMaster(marker.master);
+  state.enabled.add(marker.cat);
+  state.hideFound = false;
+  $('hide-found').checked = false;
+  buildCategories();
+  map.flyTo(marker.px, marker.py, Math.max(map.scale, 0.9));
+  showPopup(marker);
+  markerFocusTimer = setTimeout(() => { if (state.selected === marker.id && state.master === marker.master) showPopup(marker); }, 430);
+  if (matchMedia('(max-width: 700px)').matches) $('sb-collapse').click();
 }
 
 function switchMaster(id) {
@@ -1137,42 +1167,52 @@ function wireUi() {
   const search = $('search');
   const results = $('search-results');
   search.oninput = () => {
-    const q = search.value.trim().toLowerCase();
+    const q = MarkerSearch.normalize(search.value);
     if (q.length < 2) { results.classList.remove('open'); return; }
-    // Search every locale's name, so an English query still finds a marker
-    // while the UI is in Russian (and vice versa).
+    // One marker, multiple locally extracted names; accent-insensitive in all views.
     const hits = state.markers
-      .filter((m) => {
-        const names = m.names ? Object.values(m.names) : [m.name || ''];
-        return names.some((n) => n && n.toLowerCase().includes(q));
-      })
+      .filter((m) => MarkerSearch.matches(m, q))
+      .sort(MarkerSearch.compare)
       .slice(0, 40);
     results.innerHTML = hits.length
-      ? hits.map((m) => `<div class="sr-item" data-id="${m.id}">
+      ? hits.map((m) => `<button type="button" class="sr-item" data-id="${m.id}">
            <span class="swatch" style="width:9px;height:9px;border-radius:50%;background:${(CATS[m.cat]||CATS.poi).color}"></span>
-           <span>${escapeHtml(nameOf(m))}</span>
-           <span class="sr-cat">${isFound(m) ? '✓ ' : ''}${m.master || ''}</span></div>`).join('')
+           <span>${escapeHtml(nameOf(m))}${m.reference ? `<small class="dim"> · near ${escapeHtml(m.reference.locationNames.en || m.map)} · reference</small>` : ''}</span>
+           <span class="sr-cat">${isFound(m) ? '✓ ' : ''}${m.master || ''}</span></button>`).join('')
       : `<div class="sr-item dim">${escapeHtml(t('search.none'))}</div>`;
     results.classList.add('open');
     results.querySelectorAll('.sr-item[data-id]').forEach((el) => {
       el.onclick = () => {
         const m = state.byId.get(el.dataset.id);
         if (!m) return;
-        if (m.master !== state.master) switchMaster(m.master);
         results.classList.remove('open');
         search.value = '';
-        map.flyTo(m.px, m.py, Math.max(map.scale, 1.4));
-        setTimeout(() => showPopup(m), 430);
+        focusMarker(m);
+
       };
     });
   };
+  search.onkeydown = (event) => {
+    const hits = [...results.querySelectorAll('button[data-id]')];
+    if (!hits.length) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault(); hits[event.key === 'ArrowDown' ? 0 : hits.length - 1].focus();
+    } else if (event.key === 'Enter') { event.preventDefault(); hits[0].click(); }
+  };
+  results.addEventListener('keydown', (event) => {
+    const hits = [...results.querySelectorAll('button[data-id]')]; const index = hits.indexOf(document.activeElement);
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault(); hits[(index + (event.key === 'ArrowDown' ? 1 : -1) + hits.length) % hits.length]?.focus();
+    }
+    if (event.key === 'Escape') { results.classList.remove('open'); search.focus(); }
+  });
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.search-wrap')) results.classList.remove('open');
   });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { closePopup(); results.classList.remove('open'); }
-    if (e.key === '/' && document.activeElement !== search) { e.preventDefault(); search.focus(); }
+    if (e.key === '/' && !e.target.closest('input, textarea, select, [contenteditable=true]')) { e.preventDefault(); search.focus(); }
   });
 
   setTimeout(() => $('hint').classList.add('gone'), 6000);

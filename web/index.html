@@ -61,7 +61,7 @@
         <summary>Marcos · chefes <span id="milestone-count"></span></summary>
         <p class="dim">Evidência automática dos marcadores originais. Não avalia quests nem pontos sem retorno.</p>
         <label for="milestone-search">Buscar chefe</label>
-        <input id="milestone-search" type="search" placeholder="Nome do marcador…">
+        <input id="milestone-search" type="search" placeholder="English ou português…">
         <label for="milestone-status">Estado automático</label>
         <select id="milestone-status">
           <option value="all">Todos</option><option value="completed">Derrota registrada</option>
@@ -79,7 +79,7 @@
         <summary>Exploração <span id="exploration-count"></span></summary>
         <p class="dim">Graças e fragmentos dos marcadores originais. Evidência automática, independente das marcações manuais.</p>
         <label for="exploration-search">Buscar local</label>
-        <input id="exploration-search" type="search" placeholder="Nome do marcador…">
+        <input id="exploration-search" type="search" placeholder="English ou português…">
         <label for="exploration-kind">Categoria</label>
         <select id="exploration-kind"><option value="all">Graças e fragmentos</option><option value="grace">Graças</option><option value="fragment">Fragmentos de mapa</option></select>
         <label for="exploration-status">Estado automático</label>
@@ -88,6 +88,16 @@
         <select id="exploration-layer"><option value="all">Todas as camadas</option><option value="current">Camada atual do mapa</option></select>
         <p id="exploration-filter-count" aria-live="polite"></p>
         <div id="exploration-list"></div>
+      </details>
+    </section>
+
+    <section id="npc-references" class="panel" hidden aria-label="NPC reference locations">
+      <details>
+        <summary>NPCs · referências <span id="npc-reference-count"></span></summary>
+        <p class="dim">Posições extraídas dos mapas do jogo. Podem incluir variantes e aparições condicionais; não confirmam onde o NPC está agora.</p>
+        <label for="npc-search">Buscar NPC</label>
+        <input id="npc-search" type="search" placeholder="Millicent / Milicent">
+        <div id="npc-reference-list"></div>
       </details>
     </section>
 
@@ -202,6 +212,7 @@
 
 <script src="js/i18n.js"></script>
 <script src="js/map.js"></script>
+<script src="js/markerSearch.js"></script>
 <script src="js/companion.js"></script>
 <script src="js/app.js"></script>
 </body>

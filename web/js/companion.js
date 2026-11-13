@@ -35,6 +35,7 @@ window.Companion = (() => {
     panel.setAttribute('aria-label', real ? 'Minha lista por perfil' : 'Companion simulado');
     character = selected;
     renderMilestones();
+    renderNpcReferences(snapshot);
     panel.hidden = snapshot.source !== 'mock' && !(real && selected?.profileId);
     document.body.classList.toggle('real-profile-mode', real);
     if (real && selected) renderAssociation(snapshot, selected);
@@ -77,7 +78,12 @@ window.Companion = (() => {
       input.onchange = async () => { input.disabled = true; if (!await manual({ type: 'toggle', id: item.id, on: input.checked })) { input.checked = !input.checked; input.disabled = false; } };
       label.append(input, element('span', item.title));
       const remove = element('button', 'Remover'); remove.type = 'button'; remove.onclick = () => manual({ type: 'delete', id: item.id });
-      row.append(label, remove); custom.append(row);
+      row.append(label);
+      if (item.markerId && state.byId.has(item.markerId)) {
+        const focus = element('button', 'Mapa'); focus.type = 'button'; focus.onclick = () => focusMarker(state.byId.get(item.markerId));
+        row.append(focus);
+      }
+      row.append(remove); custom.append(row);
     }
     byId('custom-form').onsubmit = async (event) => {
       event.preventDefault();
@@ -132,11 +138,11 @@ window.Companion = (() => {
     const kind = prefix === 'exploration' ? byId('exploration-kind') : null;
     if (kind) kind.onchange = renderMilestones;
     input.oninput = renderMilestones; status.onchange = renderMilestones; layer.onchange = renderMilestones;
-    const query = input.value.trim().toLocaleLowerCase();
+    const query = input.value;
     const list = byId(`${prefix}-list`); list.replaceChildren();
     const visible = milestones.filter((item) => {
       const marker = state.byId.get(item.markerId);
-      return (!kind || kind.value === 'all' || item.kind === kind.value) && (!query || (marker ? nameOf(marker) : item.markerId).toLocaleLowerCase().includes(query)) &&
+      return (!kind || kind.value === 'all' || item.kind === kind.value) && (!query || MarkerSearch.matches(marker || { name: item.markerId }, query)) &&
         (status.value === 'all' || item.status === status.value) &&
         (layer.value === 'all' || marker?.master === state.master);
     });
@@ -159,14 +165,29 @@ window.Companion = (() => {
       const focus = element('button', 'Ver no mapa'); focus.type = 'button';
       focus.disabled = !marker || !masterInfo(marker.master) || !Number.isFinite(marker.px) || !Number.isFinite(marker.py);
       focus.onclick = () => {
-        setFollow(false);
-        if (state.master !== marker.master) switchMaster(marker.master);
-        state.enabled.add(marker.cat); buildCategories();
-        map.flyTo(marker.px, marker.py, 0.9);
-        showPopup(marker);
-        if (matchMedia('(max-width: 700px)').matches) byId('sb-collapse').click();
+        focusMarker(marker);
       };
       card.append(focus); list.append(card);
+    }
+  }
+  function renderNpcReferences(snapshot) {
+    const section = byId('npc-references');
+    section.hidden = !(snapshot.source === 'save-copy' || snapshot.mapSource === 'local');
+    if (section.hidden) return;
+    const query = byId('npc-search'); query.oninput = () => renderNpcReferences(snapshot);
+    const list = byId('npc-reference-list'); list.replaceChildren();
+    const markers = state.markers.filter((marker) => marker.cat === 'npc' && MarkerSearch.matches(marker, query.value)).sort(MarkerSearch.compare);
+    byId('npc-reference-count').textContent = `(${markers.length})`;
+    if (!markers.length) list.append(element('p', 'Sem referências locais. Execute o extrator de NPCs para habilitar esta camada.', 'dim'));
+    for (const marker of markers) {
+      const card = element('article', undefined, 'progress-marker npc-reference-card'); card.dataset.markerId = marker.id;
+      card.append(element('h3', nameOf(marker)), element('p', `Near ${marker.reference.locationNames.en || marker.map} · ${marker.master}`));
+      card.append(element('p', 'Referência estática · localização atual desconhecida', 'dim'));
+      const details = element('details'); details.append(element('summary', 'Ver evidências'));
+      details.append(element('p', `${marker.reference.source} · ${marker.map} · entity ${marker.reference.entityId} · NPC param ${marker.reference.npcParamId} · name ID ${marker.reference.npcNameId}`));
+      details.append(element('p', marker.reference.explanation));
+      const focus = element('button', 'Ver no mapa'); focus.type = 'button'; focus.onclick = () => focusMarker(marker);
+      card.append(details, focus); list.append(card);
     }
   }
   return { render, manual, refreshMilestones: renderMilestones };

@@ -61,3 +61,16 @@ O teste padrão sem --local-map continua independente dos assets de jogo.
 O extrator atualizado registra a origem persistente/transitória das flags de
 fragmentos. Esse metadado é necessário para a confirmação conservadora da coleta
 no painel Exploração da inspeção de save.
+
+## Atualizar somente nomes e referências de NPC
+
+Com tiles/ícones e dependências já preparados:
+
+```sh
+./setup-linux.sh --labels-only
+```
+
+Esse modo atualiza nomes EN/PT/RU, nomes oficiais de fragmentos e referências de
+NPC, sem reextrair as imagens do mapa. Reinicie o servidor após atualizar dados.
+A interface exibe nomes em inglês e pesquisa todos os idiomas extraídos. Os
+arquivos `data/npcs.json` e `data/markers.json` permanecem locais e ignorados.

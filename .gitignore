@@ -57,3 +57,5 @@ cache/tips/
 *.sl2.bak
 *.co2
 *.err
+
+data/npcs.json

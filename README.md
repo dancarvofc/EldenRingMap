@@ -3,9 +3,10 @@
 Fork de [egormagurin/EldenRingMap](https://github.com/egormagurin/EldenRingMap),
 preservando o servidor Node.js, SSE e mapa canvas existentes.
 
-**POC visual com mocks:** servidor mock com dois perfis, três snapshots fictícios de Millicent,
-regras auditáveis, persistência por perfil, timeline/checklist e NPC em mapa sintético.
-Layout responsivo validado em viewports de celular e desktop.
+**Companion web local:** mapa e marcadores originais, inspeção passiva de cópias
+de saves, marcos e exploração auditáveis, busca EN/PT, referências de NPCs e listas
+por perfil. Nomes exibidos em inglês; busca sem acentos também em português.
+Quests reais e condições de presença de NPCs ainda não são avaliadas.
 
 ```sh
 npm run start:mock
@@ -14,7 +15,7 @@ npm test
 
 Com assets locais já extraídos, use `npm run start:preview` para manter mapa,
 marcadores e filtros originais junto dos novos painéis simulados.
-Preparação: [mapa local](docs/LOCAL-MAP.md).
+Preparação: [mapa local](docs/LOCAL-MAP.md). Busca e NPCs: [guia da rodada](docs/SEARCH-NPCS.md).
 
 Para conferir progresso real sem misturar mocks: [inspeção passiva de uma cópia de save](docs/SAVE-COPY.md).
 Marcações manuais reais usam perfis locais explicitamente associados. O painel
@@ -22,7 +23,7 @@ Marcações manuais reais usam perfis locais explicitamente associados. O painel
 reais ainda não são avaliadas.
 
 Leia [modo mock](docs/MOCK-MODE.md), [visão do produto](PROJECT.md) e
-[tarefa atual e próximos passos](TASK-009.md). Alvo: web no Steam Deck, navegador
+[tarefa atual e próximos passos](TASK-010.md). Alvo: web no Steam Deck, navegador
 no celular e inicialização controlada por Decky em uma etapa posterior.
 
 Nenhum save pessoal ou asset extraído do jogo acompanha as mudanças deste fork.

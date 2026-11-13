@@ -37,9 +37,6 @@ from erlib.gamepath import require_game_dir
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DEFS = os.path.join(ROOT, "data", "paramdefs")
-GAME = require_game_dir(sys.argv[1] if len(sys.argv) > 1 else None)
-MOD = modfiles.find_mod_dir()
-REG = modfiles.regulation_path(GAME, MOD)
 
 TILE_WORLD = 256
 OFFSET_X = -7168
@@ -47,16 +44,17 @@ OFFSET_Y = 16640
 
 # Locale code -> the game's own message folder. Using the game's text means
 # marker names read exactly as they do in-game, rather than being translated.
-LOCALES = {"en": "engus", "ru": "rusru"}
+LOCALES = {"en": "engus", "pt": "porbr", "ru": "rusru"}
 
 # Only used for the handful of names we synthesise ourselves (see build()).
 DERIVED = {
-    "map_of":       {"en": "Map: {}",              "ru": "Карта: {}"},
-    "map_fragment": {"en": "Map fragment {}",      "ru": "Фрагмент карты {}"},
-    "boss_arena":   {"en": "Boss arena ({})",      "ru": "Арена босса ({})"},
-    "boss_near":    {"en": "Boss arena near {}",   "ru": "Арена босса рядом: {}"},
-    "landmark":     {"en": "Landmark",             "ru": "Точка на карте"},
-    "landmark_near":{"en": "Landmark near {}",     "ru": "Точка рядом: {}"},
+    "map_area_near": {"en": "Map area near {}", "pt": "Área de mapa perto de {}", "ru": "Область карты рядом: {}"},
+    "map_of":       {"en": "Map: {}",              "ru": "Карта: {}", "pt": "Mapa: {}"},
+    "map_fragment": {"en": "Map fragment {}",      "ru": "Фрагмент карты {}", "pt": "Fragmento de mapa {}"},
+    "boss_arena":   {"en": "Boss arena ({})",      "ru": "Арена босса ({})", "pt": "Arena de chefe ({})"},
+    "boss_near":    {"en": "Boss arena near {}",   "ru": "Арена босса рядом: {}", "pt": "Arena de chefe perto de {}"},
+    "landmark":     {"en": "Landmark",             "ru": "Точка на карте", "pt": "Ponto no mapa"},
+    "landmark_near":{"en": "Landmark near {}",     "ru": "Точка рядом: {}", "pt": "Ponto perto de {}"},
 }
 
 # Legacy blocks whose art lives on the underground master rather than the surface.
@@ -103,7 +101,7 @@ def master_for_area(area):
 NAME_WINDOW = 16            # bytes either side of the flag, in 4-byte steps
 
 
-def boss_names(dvd, helper, params, defs, name_table):
+def boss_names(dvd, helper, params, defs, name_table, mod=None):
     """-> {defeatBossFlagId: [NpcName id, ...]} read out of the event scripts.
 
     Several ids is not ambiguity, it is a fight with more than one name:
@@ -129,10 +127,10 @@ def boss_names(dvd, helper, params, defs, name_table):
     read = 0
     for mid in sorted(files):
         path = f"/event/{mid}.emevd.dcx"
-        if not modfiles.has(dvd, MOD, path):
+        if not modfiles.has(dvd, mod, path):
             continue
         try:
-            raw = dcx.decompress(modfiles.read(dvd, MOD, path), oodle=helper)
+            raw = dcx.decompress(modfiles.read(dvd, mod, path), oodle=helper)
         except Exception:
             continue
         read += 1
@@ -417,6 +415,21 @@ def build(params, defs, names_by_loc, conv, boss_name_ids):
             "angle": round(v.get("angle") or 0.0, 1) or None,
         })
 
+    # Resolve official fragment item names through the same pickup flag already
+    # used by the map; nearest-landmark names are not the actual fragment names.
+    lot_def = defs["ItemLotParam"]
+    fragment_goods = defaultdict(set)
+    for row in params["ItemLotParam_map"].rows:
+        flag = lot_def.get(row.data, "getItemFlagId")
+        if not flag:
+            continue
+        for slot in range(1, 9):
+            item_id = lot_def.get(row.data, f"lotItemId{slot:02d}")
+            category = lot_def.get(row.data, f"lotItemCategory{slot:02d}")
+            title = names_by_loc["en"].get("GoodsName", {}).get(item_id, "")
+            if category == 1 and title.startswith("Map:"):
+                fragment_goods[flag].add(item_id)
+
     # ---- Map fragments ------------------------------------------------------
     # openTravelArea{Left,Right,Top,Bottom} are already MASTER PIXELS, so a
     # fragment both places a marker and describes the region it reveals.
@@ -437,10 +450,15 @@ def build(params, defs, names_by_loc, conv, boss_name_ids):
         master = "M00" if r.id < 100 else ("M01" if r.id < 1000 else "M10")
         cx, cy = (left + right) / 2, (top + bottom) / 2
         near = nearest_marker(markers, master, cx, cy, 900)
-        nm = ({loc: DERIVED["map_of"][loc].format(near["names"][loc]) for loc in LOCALES}
-              if near else derived_names("map_fragment", r.id))
+        candidates = fragment_goods.get(flag, set())
+        item_id = next(iter(candidates)) if len(candidates) == 1 else None
+        nm = ({loc: names_by_loc[loc].get("GoodsName", {}).get(item_id)
+                    or names_by_loc["en"]["GoodsName"][item_id] for loc in LOCALES}
+              if item_id is not None else ({loc: DERIVED["map_area_near"][loc].format(near["names"][loc]) for loc in LOCALES} if near else derived_names("map_fragment", str(r.id))))
         markers.append({
-            "id": f"fragment:{r.id}", "cat": "fragment",
+            "id": f"fragment:{r.id}", "cat": "fragment" if item_id is not None else "region",
+            "nameSource": "GoodsName via ItemLotParam_map.getItemFlagId" if item_id is not None else "map-area reference / item not identified",
+            "itemId": item_id,
             "names": nm,
             "flag": flag, "master": master,
             "flagSource": ("WorldMapPieceParam.openEventFlagId" if v["openEventFlagId"]
@@ -507,7 +525,25 @@ def merge_colocated(markers):
     return out
 
 
+def load_names(dvd, helper, mod=None):
+    names_by_loc = {}
+    for loc, folder in LOCALES.items():
+        tables = {}
+        for base_file in ["item.msgbnd.dcx", "item_dlc02.msgbnd.dcx"]:
+            path = f"/msg/{folder}/{base_file}"
+            if not modfiles.has(dvd, mod, path):
+                continue
+            data = modfiles.read(dvd, mod, path)
+            for fmg_name, table in fmg.load_msgbnd(data, oodle=helper).items():
+                tables.setdefault(fmg_name.split("_dlc")[0], {}).update(table)
+        names_by_loc[loc] = tables
+    return names_by_loc
+
+
 def main():
+    GAME = require_game_dir(sys.argv[1] if len(sys.argv) > 1 else None)
+    MOD = modfiles.find_mod_dir()
+    REG = modfiles.regulation_path(GAME, MOD)
     print(f"game dir: {GAME}")
     if MOD:
         print(f"mod dir:  {MOD}")
@@ -518,26 +554,17 @@ def main():
     params = param.load_params(REG)
     defs = {n: paramdef.load(os.path.join(DEFS, n + ".xml"))
             for n in ["BonfireWarpParam", "WorldMapPointParam", "WorldMapLegacyConvParam",
-                      "WorldMapPieceParam", "GameAreaParam"]}
+                      "WorldMapPieceParam", "GameAreaParam", "ItemLotParam"]}
     for n, d in defs.items():
-        actual = params[n].row_size
+        table = params["ItemLotParam_map" if n == "ItemLotParam" else n]
+        actual = table.row_size
         flag = "ok" if d.row_size == actual else f"MISMATCH (def {d.row_size} vs param {actual})"
-        print(f"  {n:<26} rows={params[n].row_count:<6} rowSize={actual:<5} {flag}")
+        print(f"  {n:<26} rows={table.row_count:<6} rowSize={actual:<5} {flag}")
 
     print("loading names ...")
-    names_by_loc = {}
-    for loc, folder in LOCALES.items():
-        tables = {}
-        for base_file in ["item.msgbnd.dcx", "item_dlc02.msgbnd.dcx"]:
-            path = f"/msg/{folder}/{base_file}"
-            if not modfiles.has(dvd, MOD, path):
-                continue
-            data = modfiles.read(dvd, MOD, path)
-            for fmg_name, table in fmg.load_msgbnd(data, oodle=helper).items():
-                tables.setdefault(fmg_name.split("_dlc")[0], {}).update(table)
-        names_by_loc[loc] = tables
-        n = len(tables.get("PlaceName", {}))
-        print(f"  {loc} ({folder}): PlaceName {n}" + ("" if n else "   <-- MISSING"))
+    names_by_loc = load_names(dvd, helper, MOD)
+    for loc, tables in names_by_loc.items():
+        print(f"  {loc}: PlaceName {len(tables.get('PlaceName', {}))}")
     if not names_by_loc.get("en", {}).get("PlaceName"):
         sys.exit("no English names loaded - cannot continue")
 
@@ -545,7 +572,7 @@ def main():
     print(f"  legacy conv blocks: {len(conv.by_block)}")
 
     print("reading boss names from the event scripts ...")
-    named = boss_names(dvd, helper, params, defs, names_by_loc["en"].get("NpcName", {}))
+    named = boss_names(dvd, helper, params, defs, names_by_loc["en"].get("NpcName", {}), MOD)
 
     markers = dedupe(build(params, defs, names_by_loc, conv, named))
     stacked = len(markers)

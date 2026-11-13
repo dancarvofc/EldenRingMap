@@ -67,3 +67,15 @@ test('explicit local profiles persist their identity independently of labels and
   assert.equal(reloaded.read(second).custom.length, 0);
   assert.throws(() => reloaded.createProfile(' '));
 });
+
+test('linked marker objectives survive reload without duplicates or automatic completion', (t) => {
+  const file = location(t); const store = new ManualState(file);
+  const profile = store.createProfile('Links');
+  store.update(profile, { type: 'create', title: 'Synthetic place', markerId: 'synthetic:place' });
+  store.update(profile, { type: 'create', title: 'Same place again', markerId: 'synthetic:place' });
+  const reloaded = new ManualState(file).read(profile);
+  assert.equal(reloaded.custom.length, 1);
+  assert.equal(reloaded.custom[0].markerId, 'synthetic:place');
+  assert.equal(reloaded.custom[0].checked, false);
+  assert.throws(() => store.update(profile, { type: 'create', title: 'Bad link', markerId: {} }));
+});

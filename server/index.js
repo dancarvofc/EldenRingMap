@@ -125,9 +125,10 @@ const projector = new Projector(loadJson(path.join(DATA, 'legacy-conv.json'), nu
  */
 const markerData = loadJson(path.join(DATA, 'markers.json'), { markers: [] });
 const itemData = loadJson(path.join(DATA, 'items.json'), { markers: [] });
+const npcData = loadJson(path.join(DATA, 'npcs.json'), { markers: [] });
 const pieceData = loadJson(path.join(DATA, 'pieces.json'), { markers: [] });
 const MARKERS = [...(markerData.markers || []), ...(itemData.markers || []),
-                 ...(pieceData.markers || [])];
+                 ...(pieceData.markers || []), ...(npcData.markers || [])];
 const FLAG_MARKERS = MARKERS.filter((m) => m.flag || (m.flags && m.flags.length));
 
 /**
@@ -613,6 +614,7 @@ function main() {
             if (!character || !character.ok || !character.profileId || character.profileId !== profileId ||
                 character.observationToken !== observationToken) throw new Error('Explicit character association required');
           }
+          if (action.markerId !== undefined && !MARKERS.some((marker) => marker.id === action.markerId)) throw new Error('Unknown marker reference');
           const manual = (saveCopyMode ? copyManual : reader.manual).update(profileId, action);
           current = buildSnapshot(reader, savePath);
           current.activeSlot = activeSlot;

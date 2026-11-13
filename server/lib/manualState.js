@@ -17,7 +17,7 @@ class ManualState {
       for (const profile of Object.values(state.profiles)) {
         if (!profile || !profile.checked || typeof profile.checked !== 'object' || Array.isArray(profile.checked) ||
             Object.values(profile.checked).some((v) => v !== true) || !Array.isArray(profile.custom) ||
-            profile.custom.some((item) => !item || typeof item.id !== 'string' || typeof item.title !== 'string' || typeof item.checked !== 'boolean')) {
+            profile.custom.some((item) => !item || typeof item.id !== 'string' || typeof item.title !== 'string' || typeof item.checked !== 'boolean' || (item.markerId !== undefined && typeof item.markerId !== 'string'))) {
           throw new Error('Invalid manual profile');
         }
       }
@@ -58,8 +58,11 @@ class ManualState {
       else delete profile.checked[action.id];
     } else if (action.type === 'create') {
       if (typeof action.title !== 'string' || !action.title.trim() || action.title.length > 300) throw new Error('Invalid title');
+      if (action.markerId !== undefined && (typeof action.markerId !== 'string' || !action.markerId.length || action.markerId.length > 300)) throw new Error('Invalid marker reference');
+      if (action.markerId && profile.custom.some((item) => item.markerId === action.markerId)) return this.read(profileId);
       if (profile.custom.length >= 1000) throw new Error('Custom objective limit reached');
-      profile.custom.push({ id: randomUUID(), title: action.title.trim(), checked: false });
+      profile.custom.push({ id: randomUUID(), title: action.title.trim(), checked: false,
+        ...(action.markerId ? { markerId: action.markerId } : {}) });
     } else if (action.type === 'toggle' || action.type === 'delete') {
       const item = profile.custom.find((i) => i.id === action.id);
       if (!item) throw new Error('Unknown custom objective');
