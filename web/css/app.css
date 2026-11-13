@@ -363,3 +363,7 @@ html, body {
 }
 
 #brand { position: sticky; top: 0; z-index: 2; background: #14120d; }
+
+/* Local-map preview preserves the upstream filters, search and map options. */
+.mock-mode.local-map #categories, .mock-mode.local-map [data-panel=search],
+.mock-mode.local-map [data-panel=options] { display: block; }

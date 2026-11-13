@@ -13,7 +13,8 @@
     "start:live": "node server/index.js --live-memory",
     "check-live": "python tools/live_memory.py --probe",
     "test": "node --test",
-    "start:mock": "node server/index.js --mock"
+    "start:mock": "node server/index.js --mock",
+    "start:preview": "node server/index.js --mock --mock-map local"
   },
   "engines": {
     "node": ">=18"

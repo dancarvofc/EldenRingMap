@@ -7,8 +7,9 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 (async () => {
+  const localMap = process.argv.includes('--local-map');
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'elden-ui-'));
-  const server = spawn(process.execPath, ['server/index.js', '--mock', '--port', '0', '--manual-state', path.join(temporary, 'manual.json')], { cwd: path.join(__dirname, '..') });
+  const server = spawn(process.execPath, ['server/index.js', '--mock', '--mock-map', localMap ? 'local' : 'synthetic', '--port', '0', '--manual-state', path.join(temporary, 'manual.json')], { cwd: path.join(__dirname, '..') });
   let browser;
   try {
     const base = await new Promise((resolve, reject) => {
@@ -42,14 +43,32 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       await page.getByText(`Explorar ${width}`, { exact: true }).waitFor();
       await page.reload();
       await page.getByText(`Explorar ${width}`, { exact: true }).waitFor();
-      await page.locator('#focus-npc').click();
-      if (width <= 700) {
+      if (localMap) {
+        assert.equal(await page.locator('#focus-npc').isDisabled(), true);
+        assert.equal(await page.locator('#categories').isVisible(), true);
+        const markers = await (await page.request.get(base + '/api/markers')).json();
+        assert.ok(markers.markers.length > 0);
+        assert.equal(await page.evaluate(() => state.byId.has('mock.npc.millicent')), false);
+        await page.locator('#sb-collapse').click();
+        const markerId = await page.evaluate(() => {
+          const marker = state.markers.find((item) => item.master === state.master);
+          map.flyTo(marker.px, marker.py, 0.9); showPopup(marker); return marker.id;
+        });
+        const wasChecked = await page.evaluate((id) => !!state.checked[id], markerId);
+        await page.locator('#popup .toggle').click();
+        await page.waitForFunction(({ id, previous }) => !!state.checked[id] !== previous, { id: markerId, previous: wasChecked });
+        assert.equal(await page.evaluate(() => state.found.size), 0);
+        await page.locator('#popup .close').click();
+        await page.locator('#sb-expand').click();
+      } else await page.locator('#focus-npc').click();
+      if (!localMap && width <= 700) {
         await page.waitForFunction(() => document.querySelector('#app').classList.contains('sb-collapsed'));
         await page.locator('#sb-expand').click();
         await page.locator('#companion').waitFor({ state: 'visible' });
       }
       await page.evaluate(() => { document.querySelector('#sidebar').scrollTop = 0; });
       await page.waitForFunction(() => document.querySelector('#sidebar').getBoundingClientRect().left >= -0.1);
+      if (localMap) await page.waitForFunction(() => map.cache.size > 0 && [...map.cache.values()].some((v) => v instanceof Image && v.complete));
       await page.screenshot({ path: path.join(temporary, `viewport-${width}.png`) });
       assert.deepEqual(errors, []);
       console.log(`PASS ${width}px: timeline, regression, persistence, profiles, map navigation; no page errors`);

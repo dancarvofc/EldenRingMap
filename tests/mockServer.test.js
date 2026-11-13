@@ -62,6 +62,8 @@ test('HTTP and SSE share mock state, isolate characters and recover on reconnect
   const next = await connect(t, base);
   const initial = await next();
   assert.equal(initial.source, 'mock');
+  assert.equal(initial.mapSource, 'synthetic');
+  assert.deepEqual((await (await fetch(base + '/api/markers')).json()).markers, []);
   assert.equal(initial.characters.length, 2);
   assert.equal(initial.live.enabled, false);
   assert.ok(!JSON.stringify(initial).includes('_flags'));
@@ -98,7 +100,7 @@ test('HTTP and SSE share mock state, isolate characters and recover on reconnect
 });
 
 test('mock refuses real saves, memory reading and LAN', { timeout: 10000 }, async () => {
-  for (const extra of [['--save', '/does/not/exist'], ['--live-memory'], ['--lan']]) {
+  for (const extra of [['--save', '/does/not/exist'], ['--live-memory'], ['--lan'], ['--mock-map', 'invalid']]) {
     const child = spawn(process.execPath, ['server/index.js', '--mock', ...extra], { cwd: root });
     const code = await new Promise((resolve) => child.once('exit', resolve));
     assert.equal(code, 1);

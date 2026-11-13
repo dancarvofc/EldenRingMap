@@ -32,6 +32,7 @@ function parseArgs(argv) {
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--mock') out.mock = true;
+    else if (a === '--mock-map') out.mockMap = argv[++i];
     else if (a === '--manual-state') out.manualState = argv[++i];
     else if (a === '--port') out.port = Number(argv[++i]);
     else if (a === '--save') out.save = argv[++i];
@@ -174,6 +175,7 @@ function computeFound(character) {
 }
 
 const clients = new Set();
+let mockMap = 'synthetic';
 let current = null;      // last good snapshot sent to clients
 let live = null;         // optional LiveMemory bridge
 let activeSlot = null;   // the slot on screen: picked in the sidebar, or matched to the running game
@@ -313,7 +315,7 @@ function buildSnapshot(reader, savePath) {
   let mtime = null;
   try { mtime = fs.statSync(savePath).mtimeMs; } catch { /* gone */ }
   return {
-    ...(parsed.source === 'mock' ? { source: 'mock', notice: parsed.notice, revision: parsed.revision } : {}),
+    ...(parsed.source === 'mock' ? { source: 'mock', mapSource: mockMap, notice: parsed.notice, revision: parsed.revision } : {}),
     savePath,
     mtime,
     encrypted: parsed.encrypted,
@@ -419,6 +421,7 @@ function main() {
   if (args.help) {
     console.log('usage: node server/index.js [options]');
     console.log('  --manual-state <path>  mock manual-state JSON (default cache/mock-manual-state.json)');
+    console.log('  --mock-map <synthetic|local>  choose mock map (default synthetic)');
     console.log('  --mock          fictional profiles and quests; never opens a save');
     console.log('  --port <n>      listen port (default 8099)');
     console.log('  --save <path>   ER0000.sl2 to watch (default: auto-detect)');
@@ -432,6 +435,16 @@ function main() {
     return;
   }
 
+  if (args.mockMap && (!args.mock || !['synthetic', 'local'].includes(args.mockMap))) {
+    console.error('--mock-map requires --mock and synthetic or local');
+    process.exit(1);
+  }
+  mockMap = args.mockMap || 'synthetic';
+  if (args.mock && mockMap === 'local' &&
+      (!fs.existsSync(path.join(WEB, 'tiles', 'manifest.json')) || !MARKERS.length)) {
+    console.error('Local map assets missing; extract tiles and markers first. See docs/LOCAL-MAP.md');
+    process.exit(1);
+  }
   if (args.mock && (args.save || args.liveMemory || args.host !== '127.0.0.1')) {
     console.error('--mock is local-only and cannot be combined with --save or --live-memory');
     process.exit(1);
@@ -549,12 +562,12 @@ function main() {
       });
       return;
     }
-    if (args.mock && p === '/tiles/manifest.json') return json(res, {
+    if (args.mock && mockMap === 'synthetic' && p === '/tiles/manifest.json') return json(res, {
       tileSize: 1024, format: 'svg', masters: {
         M00: { width: 1024, height: 1024, nativeZoom: 0, tiles: { 0: [[0, 0]] } },
       },
     });
-    if (args.mock && p === '/tiles/M00/0/0/0.svg') {
+    if (args.mock && mockMap === 'synthetic' && p === '/tiles/M00/0/0/0.svg') {
       res.writeHead(200, { 'Content-Type': 'image/svg+xml' });
       return res.end(`<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
         <defs><pattern id="g" width="128" height="128" patternUnits="userSpaceOnUse">
@@ -566,7 +579,8 @@ function main() {
       </svg>`);
     }
     if (p === '/api/state') return json(res, current);
-    if (p === '/api/markers') return json(res, MARKER_DOC);
+    if (p === '/api/markers') return json(res, args.mock && mockMap === 'synthetic'
+      ? { locales: ['en'], markers: [] } : MARKER_DOC);
 
     if (p === '/api/saves' && req.method === 'GET') {
       if (args.mock) return json(res, { current: savePath, slot: activeSlot,

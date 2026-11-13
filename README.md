@@ -12,8 +12,12 @@ npm run start:mock
 npm test
 ```
 
+Com assets locais já extraídos, use `npm run start:preview` para manter mapa,
+marcadores e filtros originais junto dos novos painéis simulados.
+Preparação: [mapa local](docs/LOCAL-MAP.md).
+
 Leia [modo mock](docs/MOCK-MODE.md), [visão do produto](PROJECT.md) e
-[tarefa atual e próximos passos](TASK-004.md). Alvo: web no Steam Deck, navegador
+[tarefa atual e próximos passos](TASK-005.md). Alvo: web no Steam Deck, navegador
 no celular e inicialização controlada por Decky em uma etapa posterior.
 
 Nenhum save pessoal ou asset extraído do jogo acompanha as mudanças deste fork.

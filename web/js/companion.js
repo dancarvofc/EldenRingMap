@@ -31,6 +31,11 @@ window.Companion = (() => {
     document.body.classList.toggle('mock-mode', snapshot.source === 'mock');
     if (panel.hidden || !selected) return;
     character = selected;
+    const localMap = snapshot.mapSource === 'local';
+    document.body.classList.toggle('local-map', localMap);
+    document.querySelector('.simulation-badge').textContent = localMap
+      ? 'MAPA REAL LOCAL · progresso simulado · NPC fictício oculto'
+      : 'SIMULAÇÃO · sem dados reais do jogo';
     byId('mock-snapshot').value = selected.snapshotId;
     byId('mock-snapshot').onchange = (event) => post('api/mock/snapshot', {
       profileId: selected.profileId, snapshotId: event.target.value,
@@ -73,11 +78,12 @@ window.Companion = (() => {
     const id = 'mock.npc.millicent';
     state.markers = state.markers.filter((marker) => marker.id !== id);
     state.byId.delete(id);
-    if (npc && npc.status !== 'unknown') {
+    if (!localMap && npc && npc.status !== 'unknown') {
       const marker = { ...npc, id, cat: 'poi', names: { en: 'Millicent · SIMULAÇÃO', ru: 'Millicent · SIMULAÇÃO' } };
       state.markers.push(marker); state.byId.set(id, marker); state.enabled.add('poi');
     }
-    byId('focus-npc').disabled = !npc || npc.status === 'unknown';
+    byId('focus-npc').textContent = localMap ? 'Posição real do NPC ainda não validada' : 'Ver NPC no mapa';
+    byId('focus-npc').disabled = localMap || !npc || npc.status === 'unknown';
     byId('focus-npc').onclick = () => {
       if (state.master !== npc.master) switchMaster(npc.master);
       map.flyTo(npc.px, npc.py, 0.9);

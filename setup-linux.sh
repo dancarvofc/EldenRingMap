@@ -156,15 +156,17 @@ if [[ ! -f "$LIB" ]]; then
     # clang is what linoodle is developed against, but gcc builds it fine.
     if command -v clang >/dev/null && command -v clang++ >/dev/null; then
         compilers=(-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++)
+        oodle_flags='-include cstdint -include utility -Wno-error'
     else
         printf 'clang not found, building the Oodle shim with gcc.\n'
         compilers=(-DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++)
+        oodle_flags='-include cstdint -include utility -Wno-error=dangling-pointer -Wno-error=sign-conversion'
     fi
     jobs="$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)"
     cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" \
         -DCMAKE_BUILD_TYPE=Release \
         "${compilers[@]}" \
-        '-DCMAKE_CXX_FLAGS=-include cstdint -include utility -Wno-error'
+        "-DCMAKE_CXX_FLAGS=$oodle_flags"
     cmake --build "$BUILD_DIR" --target linoodle -j"$jobs"
 fi
 
@@ -195,6 +197,13 @@ printf '\n[1/7] Extracting base map tiles...\n'
 "$PYTHON" "$ROOT/tools/extract_tiles.py" --game-dir "$GAME_DIR"
 printf '\n[2/7] Building marker data...\n'
 "$PYTHON" "$ROOT/tools/build_markers.py" "$GAME_DIR"
+# Minimal local preview: no item scan, wiki fetch, save access or server startup.
+if [[ "${1:-}" == "--map-only" ]]; then
+    printf '\nExtracting map icons for the local preview...\n'
+    "$PYTHON" "$ROOT/tools/extract_icons.py" --game-dir "$GAME_DIR" --mod-dir "$MOD_DIR"
+    printf '\nLocal map ready. Run npm run start:preview (no save required).\n'
+    exit 0
+fi
 printf '\n[3/7] Indexing map files...\n'
 "$PYTHON" "$ROOT/tools/enumerate_maps.py"
 printf '\n[4/7] Extracting item locations...\n'

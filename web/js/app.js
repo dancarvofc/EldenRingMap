@@ -447,7 +447,7 @@ function drawMarkers(ctx, m) {
     }
   }
 
-  if (state.source === 'mock') {
+  if (state.source === 'mock' && state.mapSource !== 'local') {
     const npc = state.byId.get('mock.npc.millicent');
     if (npc && npc.master === state.master) {
       const [x, y] = m.toScreen(npc.px, npc.py);
@@ -1226,6 +1226,7 @@ function setLive(on) {
 function applyState(s) {
   state.checked = s.checked || {};
   state.source = s.source;
+  state.mapSource = s.mapSource;
   // Every snapshot carries the live reader's state. Without this the badge
   // stayed blank on a fresh page load until the status happened to change.
   if (s.live) state.liveStatus = s.live.status;
@@ -1248,6 +1249,7 @@ function applyState(s) {
   // the live reader matched to the running game. Neither yet, the first slot.
   const c = state.characters.find((x) => x.slot === s.activeSlot) || state.characters[0] || null;
   state.character = c;
+  if (s.source === 'mock') state.checked = c?.manual.checked || {};
   if (window.Companion) Companion.render(s, c);
   state.found = new Set(c ? c.found || [] : []);
   refreshSaveEntry(s);
@@ -1261,6 +1263,7 @@ function applyState(s) {
 
   renderCharacter(c);
   refreshCounts();
+  if (s.source === 'mock' && state.selected && state.byId.has(state.selected)) showPopup(state.byId.get(state.selected));
   if (map) map.requestDraw();
   recentreOnPlayer();
 
