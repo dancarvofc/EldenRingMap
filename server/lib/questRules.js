@@ -2,9 +2,9 @@
 
 // Illustrative rules only. No real flags, coordinates or third-party quest data.
 const STEPS = [
-  { id: 'meet', flag: 'mock.millicent.met', title: 'Meet Millicent (simulation)' },
-  { id: 'help', flag: 'mock.millicent.helped', title: 'Help Millicent (simulation)' },
-  { id: 'finish', flag: 'mock.millicent.finished', title: 'Complete illustrative branch (simulation)' },
+  { id: 'meet', flag: 'mock.millicent.met', title: 'Encontrar Millicent (simulação)' },
+  { id: 'help', flag: 'mock.millicent.helped', title: 'Ajudar Millicent (simulação)' },
+  { id: 'finish', flag: 'mock.millicent.finished', title: 'Concluir ramo ilustrativo (simulação)' },
 ];
 
 function evaluateMillicent(snapshot) {

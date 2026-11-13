@@ -1,4 +1,4 @@
-# Modo mock — entregas 1 e 2
+# Modo mock — demonstração visual
 
 Execute com Node.js >=18, sem npm install:
 
@@ -42,7 +42,7 @@ curl http://localhost:8099/api/saves \
   -d '{"path":"mock://demo","slot":1}'
 ```
 
-A API retorna quests com evidências e localização sintética de NPC. Nenhuma flag
+A API e a interface mostram quests com evidências e localização sintética de NPC. Nenhuma flag
 ou coordenada é real. Não representa um guia validado de Millicent. O bitfield
 não é enviado ao navegador. Dados ausentes/inválidos ou contraditórios resultam
 em `unknown`; nenhuma regra desta demonstração declara `missed`.
@@ -59,9 +59,10 @@ usam portas efêmeras e são encerrados ao terminar. Nenhum save real é necess�
 
 ## Limitações e sequência
 
-A interface de quests e o fundo sintético ainda não foram implementados; a página
-original abre, mas pode mostrar um mapa vazio sem tiles locais. A entrega 2 já oferece persistência por perfil na API; a entrega 3
-adicionará a demonstração visual/mobile.
+A interface permite selecionar snapshots, ver a timeline, expandir evidências,
+marcar etapas manualmente e manter objetivos personalizados. O botão de NPC abre
+sua posição em um fundo sintético. No celular, recolha o menu para ver o mapa.
+A interface herdada mantém textos EN/RU; o painel novo está em português.
 A integração de saves reais exige corrigir a confiança em checksum e definir
 identidade de personagem; não se presume uma identidade estável por nome ou slot.
 
@@ -95,3 +96,16 @@ salvas independentemente do snapshot selecionado. O snapshot automático inicial
 é reiniciado ao abrir o servidor; o estado manual é recarregado do JSON. Não há
 migração automática das marcações globais antigas. JSON corrompido impede o
 início para preservar os dados; não é substituído silenciosamente.
+
+## Verificação opcional da interface
+
+Se Playwright já estiver instalado, execute com um Chromium disponível:
+
+```sh
+PLAYWRIGHT_MODULE=/caminho/para/playwright-core BROWSER_EXECUTABLE=/caminho/para/chrome node tools/verify_companion.cjs
+```
+
+O script inicia e encerra seu próprio servidor numa porta efêmera, usa estado
+manual temporário e verifica 360, 390 e 1280 px. Não requer tiles ou saves reais.
+As capturas ficam no diretório temporário informado. Viewports não substituem
+validação futura num aparelho Android conectado ao Steam Deck pela LAN.

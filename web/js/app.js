@@ -447,6 +447,16 @@ function drawMarkers(ctx, m) {
     }
   }
 
+  if (state.source === 'mock') {
+    const npc = state.byId.get('mock.npc.millicent');
+    if (npc && npc.master === state.master) {
+      const [x, y] = m.toScreen(npc.px, npc.py);
+      ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2);
+      ctx.fillStyle = '#d8b45a'; ctx.fill();
+      ctx.font = 'bold 13px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText('Millicent · SIMULAÇÃO', x, y - 18);
+    }
+  }
   drawFragmentRect(ctx, m);
   drawPlayer(ctx, m);
   ctx.restore();
@@ -882,6 +892,10 @@ function closePopup() {
 }
 
 async function toggleCheck(id, on) {
+  if (state.source === 'mock') {
+    await Companion.manual({ type: 'check', id, on });
+    return;
+  }
   if (on) state.checked[id] = true; else delete state.checked[id];
   refreshCounts();
   map.requestDraw();
@@ -1211,6 +1225,7 @@ function setLive(on) {
 
 function applyState(s) {
   state.checked = s.checked || {};
+  state.source = s.source;
   // Every snapshot carries the live reader's state. Without this the badge
   // stayed blank on a fresh page load until the status happened to change.
   if (s.live) state.liveStatus = s.live.status;
@@ -1233,6 +1248,7 @@ function applyState(s) {
   // the live reader matched to the running game. Neither yet, the first slot.
   const c = state.characters.find((x) => x.slot === s.activeSlot) || state.characters[0] || null;
   state.character = c;
+  if (window.Companion) Companion.render(s, c);
   state.found = new Set(c ? c.found || [] : []);
   refreshSaveEntry(s);
   syncSavePicker();
@@ -1312,7 +1328,9 @@ function renderCharacter(c) {
 
   renderWhere(c);
 
-  if (!c.ok && c.error) {
+  if (state.source === 'mock') {
+    $('foot').textContent = 'Ambiente simulado · nenhum save real carregado';
+  } else if (!c.ok && c.error) {
     $('foot').textContent = `${t('err.parse')}: ${c.error}`;
   } else {
     $('foot').textContent =

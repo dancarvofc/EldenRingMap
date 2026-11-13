@@ -42,6 +42,27 @@
       </div>
     </section>
 
+    <section id="companion" class="panel" hidden aria-label="Companion simulado">
+      <strong class="simulation-badge">SIMULAÇÃO · sem dados reais do jogo</strong>
+      <h2>Jornada de Millicent</h2>
+      <label for="mock-snapshot">Snapshot simulado</label>
+      <select id="mock-snapshot">
+        <option value="not-started">Não iniciada</option>
+        <option value="intermediate">Intermediária</option>
+        <option value="completed">Concluída · ramo ilustrativo</option>
+      </select>
+      <p id="companion-error" role="alert"></p>
+      <div id="quest-timeline"></div>
+      <button id="focus-npc" type="button">Ver NPC no mapa</button>
+      <h3>Marcos</h3><p class="dim">Nenhum marco real avaliado nesta simulação.</p>
+      <h3>Minha lista</h3><div id="custom-objectives"></div>
+      <form id="custom-form">
+        <label for="custom-title">Novo objetivo</label>
+        <input id="custom-title" required maxlength="300" placeholder="Explorar depois…">
+        <button type="submit">Adicionar</button>
+      </form>
+    </section>
+
     <section class="panel" data-panel="progress">
       <button type="button" class="panel-title" data-collapse>
         <span data-i18n="panel.progress">Progress</span><span class="chev">▾</span>
@@ -132,6 +153,7 @@
 
 <script src="js/i18n.js"></script>
 <script src="js/map.js"></script>
+<script src="js/companion.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

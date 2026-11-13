@@ -1,0 +1,63 @@
+'use strict';
+// Optional UI verification using an existing Playwright installation and browser.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { spawn } = require('node:child_process');
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+(async () => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'elden-ui-'));
+  const server = spawn(process.execPath, ['server/index.js', '--mock', '--port', '0', '--manual-state', path.join(temporary, 'manual.json')], { cwd: path.join(__dirname, '..') });
+  let browser;
+  try {
+    const base = await new Promise((resolve, reject) => {
+      let output = '';
+      server.stdout.on('data', (data) => { output += data; const match = /open  http:\/\/localhost:(\d+)/.exec(output); if (match) resolve(`http://127.0.0.1:${match[1]}`); });
+      server.on('error', reject); server.once('exit', (code) => reject(new Error(`Server exited ${code}`)));
+    });
+    browser = await chromium.launch({ headless: true, executablePath: process.env.BROWSER_EXECUTABLE || undefined });
+    for (const width of [360, 390, 1280]) {
+      const page = await browser.newPage({ viewport: { width, height: 900 } });
+      const errors = []; page.on('pageerror', (error) => errors.push(error.message));
+      await page.goto(base);
+      await page.locator('#companion').waitFor({ state: 'visible' });
+      await page.waitForFunction(() => document.querySelectorAll('.quest-step').length === 3);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      await page.locator('#mock-snapshot').selectOption('completed');
+      await page.waitForFunction(() => [...document.querySelectorAll('.automatic-status')].every((e) => e.textContent.includes('Concluída')));
+      await page.locator('.manual-check input').first().check();
+      await page.waitForFunction(() => !document.querySelector('.manual-check input').disabled);
+      await page.locator('#mock-snapshot').selectOption('not-started');
+      await page.waitForFunction(() => document.querySelector('.automatic-status').textContent === 'Disponível');
+      assert.equal(await page.locator('.manual-check input').first().isChecked(), true);
+      await page.locator('#custom-title').fill(`Explorar ${width}`);
+      await page.locator('#custom-form button').click();
+      await page.getByText(`Explorar ${width}`, { exact: true }).waitFor();
+      await page.locator('#save-character').selectOption({ index: 1 });
+      await page.waitForFunction(() => document.querySelector('#char-name').textContent === 'Guts');
+      assert.equal(await page.locator('.manual-check input').first().isChecked(), false);
+      assert.equal(await page.locator('.custom-row').count(), 0);
+      await page.locator('#save-character').selectOption({ index: 0 });
+      await page.getByText(`Explorar ${width}`, { exact: true }).waitFor();
+      await page.reload();
+      await page.getByText(`Explorar ${width}`, { exact: true }).waitFor();
+      await page.locator('#focus-npc').click();
+      if (width <= 700) {
+        await page.waitForFunction(() => document.querySelector('#app').classList.contains('sb-collapsed'));
+        await page.locator('#sb-expand').click();
+        await page.locator('#companion').waitFor({ state: 'visible' });
+      }
+      await page.evaluate(() => { document.querySelector('#sidebar').scrollTop = 0; });
+      await page.waitForFunction(() => document.querySelector('#sidebar').getBoundingClientRect().left >= -0.1);
+      await page.screenshot({ path: path.join(temporary, `viewport-${width}.png`) });
+      assert.deepEqual(errors, []);
+      console.log(`PASS ${width}px: timeline, regression, persistence, profiles, map navigation; no page errors`);
+      await page.close();
+    }
+    console.log(`Screenshots: ${temporary}`);
+  } finally {
+    if (browser) await browser.close();
+    const stopped = new Promise((resolve) => server.once('exit', resolve)); server.kill(); await stopped;
+  }
+})().catch((error) => { console.error(error); process.exitCode = 1; });

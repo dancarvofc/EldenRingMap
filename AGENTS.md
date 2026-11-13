@@ -1,6 +1,6 @@
 # AGENTS.md — Instruções permanentes ao Codex
 
-Este repositório será evoluído para o **Elden Ring Live Companion**. Antes de trabalhar, leia `PROJECT.md` e a tarefa ativa (`TASK-003.md`; auditoria anterior em `docs/tasks/TASK-001.md`). Não trate uma tarefa isolada como definição integral de produto.
+Este repositório será evoluído para o **Elden Ring Live Companion**. Antes de trabalhar, leia `PROJECT.md` e a tarefa ativa (`TASK-004.md`; auditoria anterior em `docs/tasks/TASK-001.md`). Não trate uma tarefa isolada como definição integral de produto.
 
 ## Princípios
 
@@ -52,4 +52,4 @@ Guias em jogo, overlay, IA, plugin Decky, APK, sincronização de nuvem, catálo
 Manter o código e as evoluções no fork dancarvofc/EldenRingMap.
 Branches, PRs e merges para main são permitidos no nosso fork.
 Não enviar PRs, commits ou merges ao repositório original egormagurin/EldenRingMap.
-A tarefa ativa é TASK-003.md. TASK-002.md registra a primeira entrega.
+A tarefa ativa é TASK-004.md. TASK-002.md registra a primeira entrega.

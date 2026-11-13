@@ -90,6 +90,11 @@ test('HTTP and SSE share mock state, isolate characters and recover on reconnect
   assert.equal((await post('/api/manual', { ...manual, profileId: 'other' })).status, 400);
   assert.equal((await fetch(base + '/api/saves')).status, 200);
   assert.equal((await fetch(base + '/')).status, 200);
+  const manifest = await (await fetch(base + '/tiles/manifest.json')).json();
+  assert.equal(manifest.masters.M00.width, 1024);
+  const tile = await fetch(base + '/tiles/M00/0/0/0.svg');
+  assert.equal(tile.headers.get('content-type'), 'image/svg+xml');
+  assert.match(await tile.text(), /coordenadas fictícias/);
 });
 
 test('mock refuses real saves, memory reading and LAN', { timeout: 10000 }, async () => {

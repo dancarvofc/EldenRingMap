@@ -549,6 +549,22 @@ function main() {
       });
       return;
     }
+    if (args.mock && p === '/tiles/manifest.json') return json(res, {
+      tileSize: 1024, format: 'svg', masters: {
+        M00: { width: 1024, height: 1024, nativeZoom: 0, tiles: { 0: [[0, 0]] } },
+      },
+    });
+    if (args.mock && p === '/tiles/M00/0/0/0.svg') {
+      res.writeHead(200, { 'Content-Type': 'image/svg+xml' });
+      return res.end(`<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+        <defs><pattern id="g" width="128" height="128" patternUnits="userSpaceOnUse">
+          <path d="M128 0H0V128" fill="none" stroke="#41473c"/>
+        </pattern></defs><path fill="#1a231e" d="M0 0h1024v1024H0z"/>
+        <path fill="url(#g)" d="M0 0h1024v1024H0z"/>
+        <path d="M256 768L512 512 768 256" fill="none" stroke="#8a7a4a" stroke-width="8" stroke-dasharray="16 12"/>
+        <text x="512" y="110" fill="#e6dfcd" text-anchor="middle" font-family="sans-serif" font-size="28">SIMULAÇÃO · coordenadas fictícias</text>
+      </svg>`);
+    }
     if (p === '/api/state') return json(res, current);
     if (p === '/api/markers') return json(res, MARKER_DOC);
 
