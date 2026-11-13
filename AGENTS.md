@@ -46,3 +46,10 @@ Não invente flags ou coordenadas reais. Na POC use IDs mock explícitos, como `
 ## Backlog, não escopo imediato
 
 Guias em jogo, overlay, IA, plugin Decky, APK, sincronização de nuvem, catálogos gigantes de quests e novos frameworks são ideias futuras. Não inicie nenhuma delas na tarefa atual.
+
+## Git e publicação — preferência explícita do usuário
+
+Manter todas as evoluções em branches no fork dancarvofc/EldenRingMap.
+Não abrir pull requests nem fazer merge para main, no fork ou no upstream.
+Publicar commits diretamente nas branches de trabalho do nosso fork.
+O PR #1 foi fechado sem merge a pedido do usuário.
